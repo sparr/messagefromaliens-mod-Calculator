@@ -21,8 +21,6 @@ namespace Calculator
         internal const string Title = "number calculate";
 
         internal const string Point = "smallnumber";
-        // The repeat key, which cycles through the repeat glyphs.
-        internal static string Repeat => Glyphs.Repeat[0];
         internal const string Negative = "negative";
         internal const string Back = "anti";
         internal const string Clear = "erase";

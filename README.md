@@ -18,7 +18,7 @@ Once unlocked, a button at the right end of the left panel's top menu opens the 
 
 The panel shows the current input expression, its result below it, and rows of keys as they unlock:
 
-- The digits 0 to 6, a key to type digits after the septimal point, a repeat key, a sign key, and the scientific-form key E. Digits typed after the repeat key repeat forever. Pressing the repeat key again cycles through the repeat glyphs with zero to three zero places before the repeating digits, and zeros typed just before it count as those places. `a E b` is a times 7 to the power b, as in the game's scientific form.
+- The digits 0 to 6, a point key, a sign key, and the scientific-form key E. Digits typed after the point key go after the septimal point. Pressing the point key again switches to repeating digits, which repeat forever, and further presses cycle through the repeat glyphs with zero to three zero places before the repeating digits, then back to a plain fraction. Zeros typed just before the switch count as those places. Once repeating digits are typed, the cycle skips the plain fraction. `a E b` is a times 7 to the power b, as in the game's scientific form.
 - Operations between two values.
 - Functions of one value. Squares, cubes, and roots follow their operand. Other functions come before their operand, joined to it by the game's "on", and apply to the rest of the expression, as the game writes them.
 - Constants.
@@ -27,7 +27,7 @@ The panel shows the current input expression, its result below it, and rows of k
 
 Evaluation order follows the game's lesson on it: functions that follow their operand apply first, then every operation applies from left to right, with no precedence between plus, minus, times, divide, exponent, and log. Typing 2 + 2 * 2 gives 8. E comes before all of these, joining the numbers on each side into one, as in the game's scientific form, so 2 + 1 E 2 is 2 + (1 E 2), and 1 E 2 squared is (1 E 2) squared. E takes a number on each side, so it cannot follow a function or start one.
 
-While the calculator is open and no text field has the keyboard, typing presses its keys: the digits 0 to 6, `+`, `-`, `*`, `/`, `^` for exponents, the decimal separator from your regional settings (`.` or `,`) for digits after the septimal point, `E` for the scientific-form key, `e` and `p` for the constants, `=` or Enter for the result, and Backspace to delete the last key pressed. `-` is the sign key at the start of a number and right after an operation, and subtraction elsewhere.
+While the calculator is open and no text field has the keyboard, typing presses its keys: the digits 0 to 6, `+`, `-`, `*`, `/`, `^` for exponents, the decimal separator from your regional settings (`.` or `,`) for the point key, `E` for the scientific-form key, `e` and `p` for the constants, `=` or Enter for the result, and Backspace to delete the last key pressed. `-` is the sign key at the start of a number and right after an operation, and subtraction elsewhere.
 
 Keys not yet unlocked do nothing, and neither does an operation that cannot go where it is pressed. Keys that would do something are underlined, like the game's menu choices.
 
@@ -49,7 +49,7 @@ Each feature unlocks with the quiz that first tests it.
 |---|---|
 | Arithmetic 2 | The calculator, with the digits, a sign key, addition, and subtraction |
 | Arithmetic 3 | Multiplication, and division with a remainder |
-| Arithmetic 4 | Digits after the point, the repeat key, results with fractions, and the choice of fraction or remainder for division |
+| Arithmetic 4 | Digits after the point, repeating digits, results with fractions, and the choice of fraction or remainder for division |
 | Arithmetic 9 | Squares and cubes |
 | Arithmetic 10 | Exponents and logs |
 | Arithmetic 11 | Square roots, approximate results, the scientific form and its E key, and the significant-figures setting |

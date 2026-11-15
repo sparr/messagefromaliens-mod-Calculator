@@ -185,7 +185,6 @@ namespace Calculator
             if (f.Fractions)
             {
                 extra.Add(Keys.Point);
-                extra.Add(Keys.Repeat);
             }
             extra.Add(Keys.Negative);
             if (f.Allows(Op.Scientific))
@@ -293,10 +292,6 @@ namespace Calculator
             {
                 calc.Point(f);
             }
-            else if (line == DigitRow && word == Keys.Repeat)
-            {
-                calc.Repeat(f);
-            }
             else if (line == SettingRow)
             {
                 if (Keys.TryParse<DivisionMode>(word, Keys.Word, out var mode))
@@ -361,10 +356,6 @@ namespace Calculator
             if (line == DigitRow && word == Keys.Point)
             {
                 return calc.CanPoint(f);
-            }
-            if (line == DigitRow && word == Keys.Repeat)
-            {
-                return calc.CanRepeat(f);
             }
             if (line == SettingRow)
             {

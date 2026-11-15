@@ -179,21 +179,10 @@ namespace Calculator
             }
         }
 
+        // Starts the digits after the point. Pressed again, starts the repeating digits, then
+        // moves them one more zero place along for each press, and after the last repeat glyph
+        // returns to a plain fraction, unless repeating digits have been typed.
         internal void Point(Features f)
-        {
-            if (f.Fractions)
-            {
-                var e = TypedEntry();
-                if (e != null)
-                {
-                    e.Point = true;
-                }
-            }
-        }
-
-        // Starts the repeating digits of the number being typed, or moves them one more zero
-        // place along, cycling from the last repeat glyph back to the first.
-        internal void Repeat(Features f)
         {
             if (!f.Fractions)
             {
@@ -204,7 +193,11 @@ namespace Calculator
             {
                 return;
             }
-            if (e.Zeros < 0)
+            if (!e.Point)
+            {
+                e.Point = true;
+            }
+            else if (e.Zeros < 0)
             {
                 // Zeros typed at the end of the fraction become the repeat's zero places.
                 var zeros = 0;
@@ -213,12 +206,15 @@ namespace Calculator
                     e.Fraction.RemoveAt(e.Fraction.Count - 1);
                     zeros++;
                 }
-                e.Point = true;
                 e.Zeros = zeros;
+            }
+            else if (e.Zeros + 1 < Calculator.Glyphs.Repeat.Length)
+            {
+                e.Zeros++;
             }
             else
             {
-                e.Zeros = (e.Zeros + 1) % Calculator.Glyphs.Repeat.Length;
+                e.Zeros = e.Repeating.Count > 0 ? 0 : -1;
             }
         }
 
@@ -350,9 +346,7 @@ namespace Calculator
             return (e.Whole.Count == 1 && e.Whole[0] == 0) || e.Whole.Count < maxWholeDigits;
         }
 
-        internal bool CanPoint(Features f) => f.Fractions && CanType && (Last == null || Last.Carried || !Last.Point);
-
-        internal bool CanRepeat(Features f) => f.Fractions && CanType;
+        internal bool CanPoint(Features f) => f.Fractions && CanType;
 
         internal bool CanNegate => Last != null || AwaitsNumber;
 
