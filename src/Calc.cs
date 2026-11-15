@@ -17,6 +17,7 @@ namespace Calculator
         {
             Op.Plus or Op.Minus => Open,
             Op.Multiply or Op.Divide => MultiplyDivide,
+            Op.Scientific => Scientific,
             _ => PowerLog,
         };
 
@@ -279,7 +280,7 @@ namespace Calculator
         {
             // Only after a whole value: not at the start, after another operation, or after a
             // sign with no number yet.
-            if (f.Allows(op) && Complete)
+            if (CanOperate(op, f))
             {
                 Uncarry();
                 items.Add(op);
@@ -298,7 +299,7 @@ namespace Calculator
                 {
                     Reset();
                 }
-                if (AwaitsNumber)
+                if (AwaitsNumber && !AfterScientific)
                 {
                     items.Add(new Prefix { Func = func });
                 }
@@ -355,10 +356,15 @@ namespace Calculator
 
         internal bool CanNegate => Last != null || AwaitsNumber;
 
-        internal bool CanOperate(Op op, Features f) => f.Allows(op) && Complete;
+        // The scientific form joins numbers, so it needs a number right before it.
+        internal bool CanOperate(Op op, Features f) =>
+            f.Allows(op) && Complete && (op != Op.Scientific || LastItem is Entry);
+
+        // The number after the scientific form, which a function cannot start.
+        private bool AfterScientific => LastItem is Op op && op == Op.Scientific;
 
         internal bool CanFunction(Func func, Features f) =>
-            f.Allows(func) && (Keys.IsPrefix(func) ? (Last != null && Last.Carried) || AwaitsNumber : Complete);
+            f.Allows(func) && (Keys.IsPrefix(func) ? (Last != null && Last.Carried) || (AwaitsNumber && !AfterScientific) : Complete);
 
         // A constant or random value, as by Literal.
         internal bool CanLiteral => Last != null || AwaitsNumber;
@@ -544,6 +550,9 @@ namespace Calculator
                         return Num.Divide(left, right);
                     case Op.Exponent:
                         return Num.Power(left, right);
+                    case Op.Scientific:
+                        var scale = Num.Power(Num.Of(new BigInteger(7)), right);
+                        return scale.HasValue ? left * scale.Value : (Num?)null;
                     default:
                         return Num.Log(left, right);
                 }
@@ -557,6 +566,18 @@ namespace Calculator
                 }
                 pos++;
                 Num? v = e.Value;
+                // The scientific form joins two numbers into one, before any function or
+                // other operation applies.
+                while (v.HasValue && Peek is Op op && op == Op.Scientific)
+                {
+                    pos++;
+                    if (!(Peek is Entry power))
+                    {
+                        return null;
+                    }
+                    pos++;
+                    v = Apply(Op.Scientific, v.Value, power.Value);
+                }
                 while (v.HasValue && Peek is Postfix p)
                 {
                     pos++;

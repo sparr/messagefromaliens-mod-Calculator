@@ -188,9 +188,14 @@ namespace Calculator
                 extra.Add(Keys.Repeat);
             }
             extra.Add(Keys.Negative);
+            if (f.Allows(Op.Scientific))
+            {
+                extra.Add(Keys.Word(Op.Scientific));
+            }
             // The other number keys sit side by side so the row fits in the panel's width.
             rows[DigitRow] = digits + " " + Gap + " " + string.Join(" ", extra);
-            rows[OperationRow] = Spaced(Values<Op>().Where(f.Allows).Select(Keys.Word));
+            // The scientific operator builds numbers, so it sits on the digit row.
+            rows[OperationRow] = Spaced(Values<Op>().Where(op => op != Op.Scientific && f.Allows(op)).Select(Keys.Word));
             rows[FunctionRow] = Spaced(Values<Func>().Where(f.Allows).Select(Keys.Word));
             var constants = Values<Constant>().Where(f.Allows).Select(Keys.Word).ToList();
             if (f.Chance)
@@ -502,7 +507,11 @@ namespace Calculator
                 {
                     calc.Operation(op, f);
                 }
-                else if (c == 'e' || c == 'E')
+                else if (c == 'E')
+                {
+                    calc.Operation(Op.Scientific, f);
+                }
+                else if (c == 'e')
                 {
                     calc.Constant(Constant.E, f);
                 }

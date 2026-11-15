@@ -1,6 +1,7 @@
 namespace Calculator
 {
-    internal enum Op { Plus, Minus, Multiply, Divide, Exponent, Log }
+    // Scientific multiplies by 7 to the power of its right side, as in the game's scientific form.
+    internal enum Op { Plus, Minus, Multiply, Divide, Exponent, Log, Scientific }
 
     // Functions of one value: postfix ones follow it, as in "4 squareroot", and prefix ones come
     // before it with "on", as the game writes them.
@@ -44,7 +45,8 @@ namespace Calculator
             Op.Multiply => "multiply",
             Op.Divide => "divide",
             Op.Exponent => "exponent",
-            _ => "log",
+            Op.Log => "log",
+            _ => "exp7",
         };
 
         internal static string Word(Func f) => f switch
