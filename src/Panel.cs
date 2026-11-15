@@ -1,0 +1,732 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using HarmonyLib;
+using UnityEngine;
+using UnityEngine.EventSystems;
+
+namespace Calculator
+{
+    // Shows the calculator in the left panel in place of the panel's history, from a button at
+    // the right end of the panel's menu. The calculator is not a history entry: while it is
+    // open, the panel's history buttons go back to the entry it covers or on to the next one,
+    // and anything the game adds to the history closes it. The expression stays as it was while
+    // the calculator is closed.
+    internal static class Panel
+    {
+        // Quizzes as the game records them solved. The seventh and later are numbered in base 7:
+        // the tenth is "1e1-3". Each feature unlocks with the quiz that first tests it.
+        private const string Quiz2 = "arithmetic-riddle-2";
+        private const string Quiz3 = "arithmetic-riddle-3";
+        private const string Quiz4 = "arithmetic-riddle-4";
+        private const string Quiz9 = "arithmetic-riddle-1e1-2";
+        private const string Quiz10 = "arithmetic-riddle-1e1-3";
+        private const string Quiz11 = "arithmetic-riddle-1e1-4";
+        private const string GeometryQuiz1 = "geometry-riddle-1";
+        private const string GeometryQuiz7 = "geometry-riddle-1e1";
+        private const string AdvancedQuiz1 = "advanced-arithmetic-riddle-1";
+        private const string AdvancedQuiz2 = "advanced-arithmetic-riddle-2";
+        private const string AdvancedQuiz4 = "advanced-arithmetic-riddle-4";
+
+        private const string Gap = ".";
+        private const string Newline = " newline ";
+        // Glyph cells in one row of the left panel.
+        private const int RowWidth = 12;
+        // The calculator's rows: the expression, its result, then keys.
+        private const int ExpressionRow = 0;
+        private const int ResultRow = 1;
+        private const int DigitRow = 2;
+        private const int OperationRow = 3;
+        private const int FunctionRow = 4;
+        private const int ConstantRow = 5;
+        private const int SettingRow = 6;
+        private const int ControlRow = 7;
+        private const int FirstKeyRow = DigitRow;
+        private const int MaxFigures = 6;
+        // The panel menu's history buttons, and its blank page-button slots.
+        private const string Early = "early";
+        private const string Late = "late";
+        private const string BlankPages = ". .";
+
+        private static readonly Calc calc = new Calc();
+        private static bool open;
+        // The history entry under the calculator, and the page it was on.
+        private static int savedEntry = -1;
+        private static int savedPage;
+
+        private static readonly Func<Draw, bool> IsEditNote =
+            AccessTools.MethodDelegate<Func<Draw, bool>>(AccessTools.Method(typeof(Draw), "IsEditNote"));
+
+        private static Draw Manager => Global.manager;
+
+        internal static Features Unlocked()
+        {
+            var won = Global.savedata?.win;
+            if (won == null)
+            {
+                return new Features();
+            }
+            return new Features
+            {
+                Open = won.Contains(Quiz2),
+                MultiplyDivide = won.Contains(Quiz3),
+                Fractions = won.Contains(Quiz4),
+                Squares = won.Contains(Quiz9),
+                PowerLog = won.Contains(Quiz10),
+                SquareRoot = won.Contains(Quiz11),
+                Scientific = won.Contains(Quiz11),
+                Approximate = won.Contains(Quiz11),
+                Pi = won.Contains(GeometryQuiz1),
+                CubeRoot = won.Contains(GeometryQuiz7),
+                Trig = won.Contains(AdvancedQuiz1),
+                E = won.Contains(AdvancedQuiz2),
+                Chance = won.Contains(AdvancedQuiz4),
+            };
+        }
+
+        // The largest place the player has seen a digit in, as the dictionary records every
+        // glyph shown. Higher places would show glyphs the game has not.
+        private static int SeenPlace()
+        {
+            var seen = 0;
+            var dict = Global.savedata?.dict;
+            if (dict == null)
+            {
+                return seen;
+            }
+            foreach (var word in dict.Keys)
+            {
+                if (word.Length >= 3 && word[0] >= '1' && word[0] <= '6' && word[1] == 'e' && int.TryParse(word.Substring(2), out var place) && place > seen)
+                {
+                    seen = place;
+                }
+            }
+            return seen;
+        }
+
+        // Results use places up to the largest seen place, or once the scientific form is
+        // unlocked, up to the significant-figures setting. Typed numbers use the seen places.
+        private static int ValuePlace(Features f) =>
+            f.Scientific ? Math.Min(Plugin.Figures.Value, SeenPlace() + 1) - 1 : SeenPlace();
+
+        private static DivisionMode Mode(Features f) => f.Fractions ? Plugin.Division.Value : DivisionMode.Remainder;
+
+        // Whether the button belongs in the menu: unlocked, and the panel is not editing a note.
+        private static bool Available(Draw d) =>
+            Plugin.Enabled.Value && Unlocked().Open && d != null && !IsEditNote(d);
+
+        private static bool Showing(Draw d) => open && Available(d);
+
+        private static void Open(Draw d)
+        {
+            open = true;
+            savedEntry = d.currenttext;
+            savedPage = savedEntry >= 0 && savedEntry < d.currentleftpage.Count ? d.currentleftpage[savedEntry] : 0;
+            d.UpdateText();
+        }
+
+        // Back to the history entry, on the page it was on; drawing the calculator's single page
+        // resets the entry's page.
+        private static void Close(Draw d)
+        {
+            if (!open)
+            {
+                return;
+            }
+            open = false;
+            if (d != null && savedEntry >= 0 && savedEntry < d.currentleftpage.Count)
+            {
+                d.currentleftpage[savedEntry] = savedPage;
+            }
+            savedEntry = -1;
+            d?.UpdateText();
+        }
+
+        // While the calculator is open: no page buttons, and the history buttons lead back to the
+        // entry under the calculator and the one after it.
+        private static string OpenMenu(Draw d)
+        {
+            var count = d.text_history.Count;
+            var early = d.currenttext >= 0 && d.currenttext < count ? Early : Gap;
+            var late = d.currenttext + 1 < count ? Late : Gap;
+            return BlankPages + " " + early + " " + late;
+        }
+
+        private static string Row(IEnumerable<string> glyphs)
+        {
+            var row = string.Join(" ", glyphs);
+            return row == "" ? Gap : row;
+        }
+
+        private static string Spaced(IEnumerable<string> keys) => string.Join(" " + Gap + " ", keys);
+
+        private static string Body()
+        {
+            var f = Unlocked();
+            var expression = calc.Glyphs(SeenPlace(), ValuePlace(f), f.Scientific);
+            // The newest part of a long expression, leaving the last cell for the sign that the
+            // expression is approximate.
+            var width = calc.Approximate ? RowWidth - 1 : RowWidth;
+            if (expression.Count > width)
+            {
+                expression = expression.Skip(expression.Count - width).ToList();
+            }
+            if (calc.Approximate)
+            {
+                expression.AddRange(Enumerable.Repeat(Gap, width - expression.Count));
+                expression.Add(Keys.Approximately);
+            }
+            var rows = new string[ControlRow + 1];
+            rows[ExpressionRow] = Row(expression);
+            rows[ResultRow] = Row(Result(f, out _, out _));
+
+            var digits = string.Join(" ", Enumerable.Range(0, 7).Select(i => i.ToString()));
+            var extra = new List<string>();
+            if (f.Fractions)
+            {
+                extra.Add(Keys.Point);
+                extra.Add(Keys.Repeat);
+            }
+            extra.Add(Keys.Negative);
+            // The other number keys sit side by side so the row fits in the panel's width.
+            rows[DigitRow] = digits + " " + Gap + " " + string.Join(" ", extra);
+            rows[OperationRow] = Spaced(Values<Op>().Where(f.Allows).Select(Keys.Word));
+            rows[FunctionRow] = Spaced(Values<Func>().Where(f.Allows).Select(Keys.Word));
+            var constants = Values<Constant>().Where(f.Allows).Select(Keys.Word).ToList();
+            if (f.Chance)
+            {
+                constants.Add(Keys.Chance);
+            }
+            rows[ConstantRow] = Spaced(constants);
+            var settings = new List<string>();
+            if (f.Fractions)
+            {
+                settings.Add(Keys.Word(Op.Divide) + " " + Gap + " " + Keys.Word(DivisionMode.Fraction) + " " + Keys.Word(DivisionMode.Remainder));
+            }
+            if (f.Scientific)
+            {
+                settings.Add(Keys.Figures + " " + Plugin.Figures.Value);
+            }
+            rows[SettingRow] = Spaced(settings);
+            rows[ControlRow] = Spaced(new[] { Keys.Back, Keys.Clear, Keys.Equal });
+            return string.Join(Newline, rows.Select(r => string.IsNullOrEmpty(r) ? Gap : r));
+        }
+
+        private static IEnumerable<T> Values<T>() where T : Enum => Enum.GetValues(typeof(T)).Cast<T>();
+
+        // The result row, and the value [=] would carry with whether carrying it is approximate.
+        // The value is null when there is none to carry, or when it would be approximate before
+        // the approximately-equal sign is unlocked. A remainder of zero is not shown.
+        private static List<string> Result(Features f, out Num? carry, out bool approximate)
+        {
+            carry = null;
+            approximate = false;
+            var list = new List<string>();
+            var outcome = calc.Evaluate(f, Mode(f));
+            if (!outcome.Any)
+            {
+                return list;
+            }
+            var place = ValuePlace(f);
+            var exact = false;
+            var value = outcome.Value.HasValue ? Glyphs.Write(outcome.Value.Value, out exact, place, f.Scientific, RowWidth - 1) : null;
+            List<string> remainder = null;
+            var remainderExact = true;
+            var hasRemainder = outcome.Remainder is Num r && !r.IsZero;
+            if (value != null && hasRemainder)
+            {
+                remainder = Glyphs.Write(outcome.Remainder.Value, out remainderExact, place, f.Scientific);
+                if (remainder != null && value.Count + 2 + remainder.Count > RowWidth)
+                {
+                    remainder = null;
+                }
+            }
+            // What the row shows is approximate after an approximate carry, for a rounded value,
+            // or for a remainder that is rounded or does not fit.
+            var shownApproximate = calc.Approximate || !exact || (hasRemainder && (remainder == null || !remainderExact));
+            if (value == null || (shownApproximate && !f.Approximate))
+            {
+                list.Add(Keys.Equal);
+                list.Add(Keys.NoValue);
+                return list;
+            }
+            list.Add(shownApproximate ? Keys.Approximately : Keys.Equal);
+            list.AddRange(value);
+            if (remainder != null)
+            {
+                list.Add(Keys.Remainder);
+                list.AddRange(remainder);
+            }
+            // Carrying the quotient alone drops the remainder.
+            approximate = shownApproximate || hasRemainder;
+            if (!approximate || f.Approximate)
+            {
+                carry = outcome.Value;
+            }
+            return list;
+        }
+
+        // [=]: carry the result into a new expression. Once anything carried is approximate, so
+        // is everything after it, until the expression is cleared.
+        private static void Equal(Features f)
+        {
+            Result(f, out var carry, out var approximate);
+            if (carry.HasValue)
+            {
+                calc.Carry(carry.Value, approximate);
+            }
+        }
+
+        private static void Press(Draw d, string word, int line)
+        {
+            var f = Unlocked();
+            if (line == DigitRow && word.Length == 1 && word[0] >= '0' && word[0] <= '6')
+            {
+                calc.Digit(word[0] - '0', f, SeenPlace() + 1);
+            }
+            else if (line == DigitRow && word == Keys.Point)
+            {
+                calc.Point(f);
+            }
+            else if (line == DigitRow && word == Keys.Repeat)
+            {
+                calc.Repeat(f);
+            }
+            else if (line == SettingRow)
+            {
+                if (Keys.TryParse<DivisionMode>(word, Keys.Word, out var mode))
+                {
+                    if (f.Fractions)
+                    {
+                        Plugin.Division.Value = mode;
+                    }
+                }
+                else if (word != Keys.Word(Op.Divide))
+                {
+                    // The counter and its label cycle the significant figures.
+                    Plugin.Figures.Value = Plugin.Figures.Value % MaxFigures + 1;
+                }
+            }
+            else if (word == Keys.Negative)
+            {
+                calc.Negate();
+            }
+            else if (Keys.TryParse<Op>(word, Keys.Word, out var op))
+            {
+                calc.Operation(op, f);
+            }
+            else if (Keys.TryParse<Func>(word, Keys.Word, out var func))
+            {
+                calc.Function(func, f);
+            }
+            else if (Keys.TryParse<Constant>(word, Keys.Word, out var constant))
+            {
+                calc.Constant(constant, f);
+            }
+            else if (word == Keys.Chance)
+            {
+                calc.Random(f);
+            }
+            else if (word == Keys.Back)
+            {
+                calc.Back();
+            }
+            else if (word == Keys.Clear)
+            {
+                calc.Clear();
+            }
+            else if (word == Keys.Equal)
+            {
+                Equal(f);
+            }
+            else
+            {
+                return;
+            }
+            d.UpdateText();
+        }
+
+        // Whether pressing a key would do anything, mirroring Press.
+        private static bool Pressable(string word, int line, Features f)
+        {
+            if (line == DigitRow && word.Length == 1 && word[0] >= '0' && word[0] <= '6')
+            {
+                return calc.CanDigit(f, SeenPlace() + 1);
+            }
+            if (line == DigitRow && word == Keys.Point)
+            {
+                return calc.CanPoint(f);
+            }
+            if (line == DigitRow && word == Keys.Repeat)
+            {
+                return calc.CanRepeat(f);
+            }
+            if (line == SettingRow)
+            {
+                if (Keys.TryParse<DivisionMode>(word, Keys.Word, out var mode))
+                {
+                    return f.Fractions && mode != Plugin.Division.Value;
+                }
+                return word != Keys.Word(Op.Divide) && f.Scientific;
+            }
+            if (word == Keys.Negative)
+            {
+                return calc.CanNegate;
+            }
+            if (Keys.TryParse<Op>(word, Keys.Word, out var op))
+            {
+                return calc.CanOperate(op, f);
+            }
+            if (Keys.TryParse<Func>(word, Keys.Word, out var func))
+            {
+                return calc.CanFunction(func, f);
+            }
+            if (Keys.TryParse<Constant>(word, Keys.Word, out var constant))
+            {
+                return f.Allows(constant) && calc.CanLiteral;
+            }
+            if (word == Keys.Chance)
+            {
+                return f.Chance && calc.CanLiteral;
+            }
+            if (word == Keys.Back || word == Keys.Clear)
+            {
+                return calc.CanBack;
+            }
+            if (word == Keys.Equal)
+            {
+                Result(f, out var carry, out _);
+                return carry.HasValue && !calc.OnlyCarried;
+            }
+            return false;
+        }
+
+        // The division mode's current choice is boxed, like a choice on the game's settings page,
+        // and keys that would do anything are underlined, like the game's menu choices. Each
+        // key's underline stops short of the next glyph, except within the significant-figures
+        // label and count, which act as one key and share one underline.
+        private static void Layout(Draw d)
+        {
+            if (!Showing(d) || d.alien_left_text == null)
+            {
+                return;
+            }
+            var f = Unlocked();
+            var current = Keys.Word(Plugin.Division.Value);
+            var glyphs = d.alien_left_text
+                .Where(a => a != null && a.gameObject.activeSelf && a.line >= FirstKeyRow && a.alien_txt != "")
+                .ToList();
+            bool InFigures(AlienCharacter a) =>
+                a != null && a.line == SettingRow && a.alien_txt != Keys.Word(Op.Divide) &&
+                !Keys.TryParse<DivisionMode>(a.alien_txt, Keys.Word, out _);
+            AlienCharacter At(int line, int x) => glyphs.FirstOrDefault(a => a.line == line && a.line_x == x);
+            foreach (var glyph in glyphs)
+            {
+                var position = glyph.sp.transform.position;
+                if (f.Fractions && glyph.line == SettingRow && glyph.alien_txt == current)
+                {
+                    d.selected.Add(d.DrawRectRenderer(1f, 1f, position, 2));
+                }
+                if (!Pressable(glyph.alien_txt, glyph.line, f))
+                {
+                    continue;
+                }
+                var joined = InFigures(glyph);
+                var left = joined && InFigures(At(glyph.line, glyph.line_x - 1)) ? -0.5f : -0.45f;
+                var right = joined && InFigures(At(glyph.line, glyph.line_x + 1)) ? 0.5f : 0.45f;
+                d.selected.Add(d.DrawLineRenderer(position + new Vector3(left, -0.92f), position + new Vector3(right, -0.92f), 3));
+            }
+        }
+
+        [HarmonyPatch(typeof(Draw), nameof(Draw.UpdateText1))]
+        private static class UpdateText1Patch
+        {
+            private static void Postfix(Draw __instance)
+            {
+                try
+                {
+                    Layout(__instance);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogError($"UpdateText1 postfix failed: {e}");
+                }
+            }
+        }
+
+        private static bool IsButton(AlienCharacter glyph) =>
+            glyph != null && glyph.sector == "leftmenu" && glyph.alien_txt == Keys.Button;
+
+        private static bool IsKey(Draw d, AlienCharacter glyph) =>
+            glyph != null && Showing(d) && glyph.sector == "lefttext" && glyph.line >= FirstKeyRow && glyph.alien_txt != "";
+
+        private static AlienCharacter HitGlyph()
+        {
+            var cam = Camera.main;
+            if (cam == null || !Physics.Raycast(cam.ScreenPointToRay(Input.mousePosition), out var hit))
+            {
+                return null;
+            }
+            return hit.transform.gameObject.GetComponentInParent<AlienCharacter>();
+        }
+
+        // Keys typed while the calculator is open and no text field has focus, as presses of the
+        // calculator's keys. Minus is the sign key where a number may start, and the subtraction
+        // key elsewhere. Backspace deletes the last key pressed.
+        private static void Type(Draw d)
+        {
+            var typed = Input.inputString;
+            if (string.IsNullOrEmpty(typed) || TextFieldFocused())
+            {
+                return;
+            }
+            var f = Unlocked();
+            var point = DecimalSeparator.Value;
+            var any = false;
+            foreach (var c in typed)
+            {
+                any = true;
+                if (c >= '0' && c <= '6')
+                {
+                    calc.Digit(c - '0', f, SeenPlace() + 1);
+                }
+                else if (point.Length > 0 && c == point[0])
+                {
+                    calc.Point(f);
+                }
+                else if (c == '-' && calc.AwaitsNumber)
+                {
+                    calc.Negate();
+                }
+                else if (TypedOp(c) is Op op)
+                {
+                    calc.Operation(op, f);
+                }
+                else if (c == 'e' || c == 'E')
+                {
+                    calc.Constant(Constant.E, f);
+                }
+                else if (c == 'p' || c == 'P')
+                {
+                    calc.Constant(Constant.Pi, f);
+                }
+                else if (c == '\b')
+                {
+                    calc.Back();
+                }
+                else if (c == '=' || c == '\n' || c == '\r')
+                {
+                    Equal(f);
+                }
+                else
+                {
+                    any = false;
+                }
+            }
+            if (any)
+            {
+                d.UpdateText();
+            }
+        }
+
+        // The player's decimal separator. Unity runs with the invariant culture, so ask Windows
+        // (or Wine, which follows the Unix locale) for the user's setting.
+        private static readonly Lazy<string> DecimalSeparator = new Lazy<string>(() =>
+        {
+            try
+            {
+                var buffer = new System.Text.StringBuilder(8);
+                if (GetLocaleInfoEx(null, LocaleSDecimal, buffer, buffer.Capacity) > 1)
+                {
+                    return buffer.ToString();
+                }
+            }
+            catch (Exception e)
+            {
+                Plugin.Log.LogWarning($"Could not read the decimal separator: {e.Message}");
+            }
+            return System.Globalization.CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+        });
+
+        private const int LocaleSDecimal = 0x0E;
+
+        [System.Runtime.InteropServices.DllImport("kernel32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        private static extern int GetLocaleInfoEx(string localeName, int type, System.Text.StringBuilder data, int size);
+
+        private static Op? TypedOp(char c) => c switch
+        {
+            '+' => Op.Plus,
+            '-' => Op.Minus,
+            '*' => Op.Multiply,
+            '/' => Op.Divide,
+            '^' => Op.Exponent,
+            _ => (Op?)null,
+        };
+
+        // Whether a text field, such as one of the game's translation fields, has the keyboard.
+        private static bool TextFieldFocused()
+        {
+            var selected = EventSystem.current?.currentSelectedGameObject;
+            if (selected == null)
+            {
+                return false;
+            }
+            var tmp = selected.GetComponent<TMPro.TMP_InputField>();
+            if (tmp != null && tmp.isFocused)
+            {
+                return true;
+            }
+            var legacy = selected.GetComponent<UnityEngine.UI.InputField>();
+            return legacy != null && legacy.isFocused;
+        }
+
+        // Clicks, from the plugin's LateUpdate: the game ignores clicks on glyphs it does not know.
+        internal static void Tick()
+        {
+            var d = Manager;
+            if (d == null)
+            {
+                return;
+            }
+            if (open && !Available(d))
+            {
+                Close(d);
+            }
+            if (Showing(d))
+            {
+                Type(d);
+            }
+            if (!Input.GetMouseButtonDown(0))
+            {
+                return;
+            }
+            var glyph = HitGlyph();
+            if (IsButton(glyph) && Available(d))
+            {
+                if (open)
+                {
+                    Close(d);
+                }
+                else
+                {
+                    Open(d);
+                }
+            }
+            else if (IsKey(d, glyph))
+            {
+                Press(d, glyph.alien_txt, glyph.line);
+            }
+        }
+
+        [HarmonyPatch]
+        private static class WritePatch
+        {
+            private static System.Reflection.MethodBase TargetMethod() =>
+                AccessTools.Method(typeof(Draw), nameof(Draw.Write), new[]
+                {
+                    typeof(string), typeof(int), typeof(int), typeof(int), typeof(bool), typeof(bool),
+                    typeof(bool), typeof(float), typeof(string), typeof(float), typeof(bool), typeof(int), typeof(int),
+                });
+
+            private static void Prefix(Draw __instance, ref string s, string sec, ref int page)
+            {
+                try
+                {
+                    var d = __instance;
+                    switch (sec)
+                    {
+                        case "lefttext" when Showing(d):
+                            s = Body();
+                            page = 0;
+                            break;
+                        case "lefttitle" when Showing(d):
+                            s = Keys.Title;
+                            break;
+                        case "leftmenu" when Available(d):
+                            s = (open ? OpenMenu(d) : s) + " " + Keys.Button;
+                            break;
+                    }
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogError($"Write prefix failed: {e}");
+                }
+            }
+        }
+
+        // Anything new in the panel's history replaces the calculator.
+        [HarmonyPatch(typeof(Draw), nameof(Draw.PushLeftText))]
+        private static class PushLeftTextPatch
+        {
+            private static void Prefix(Draw __instance)
+            {
+                try
+                {
+                    Close(__instance);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogError($"PushLeftText prefix failed: {e}");
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(Draw), "Update")]
+        private static class UpdatePatch
+        {
+            // The history buttons, clicked while the calculator is open, go to the entry under the
+            // calculator or the one after it. The game handles the click during Update as a step
+            // from that entry, so note the entry to show here and set it afterward.
+            private static void Prefix(Draw __instance, out int __state)
+            {
+                __state = -1;
+                try
+                {
+                    var d = __instance;
+                    if (!Showing(d) || !Input.GetMouseButtonDown(0))
+                    {
+                        return;
+                    }
+                    var glyph = HitGlyph();
+                    if (glyph == null || glyph.sector != "leftmenu")
+                    {
+                        return;
+                    }
+                    var target = glyph.alien_txt == Early ? d.currenttext
+                        : glyph.alien_txt == Late ? d.currenttext + 1
+                        : -1;
+                    if (target >= 0 && target < d.text_history.Count)
+                    {
+                        __state = target;
+                        Close(d);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogError($"Update prefix failed: {e}");
+                }
+            }
+
+            // Also: the game sets the cursor each frame from what is under it; mark the keys clickable.
+            private static void Postfix(Draw __instance, int __state)
+            {
+                try
+                {
+                    if (__state >= 0)
+                    {
+                        __instance.currenttext = __state;
+                        __instance.UpdateText();
+                    }
+                    if (IsKey(__instance, HitGlyph()))
+                    {
+                        HardwareCursor.Apply(__instance.DefaultColor(0), __instance.mousesize.x);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogError($"Update postfix failed: {e}");
+                }
+            }
+        }
+    }
+}
