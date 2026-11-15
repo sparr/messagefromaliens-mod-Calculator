@@ -18,7 +18,7 @@ namespace Calculator
         // The English name stands in for the glyph name above where glyphs cannot be shown.
         public const string Guid = "sparr.messagefromaliens.calculator";
         public const string Name = "Calculator";
-        public const string Version = "0.1.0";
+        public const string Version = "0.3.0";
 
         internal static ManualLogSource Log;
         internal static ConfigEntry<bool> Enabled;
