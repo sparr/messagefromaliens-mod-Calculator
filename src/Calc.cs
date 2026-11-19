@@ -51,6 +51,9 @@ namespace Calculator
             // The zero places between the fraction digits and the repeating digits, or -1 when
             // the number does not repeat.
             internal int Zeros = -1;
+            // Zeros typed at the end of the fraction that starting the repeat turned into zero
+            // places, given back if the point key cycles back to a plain fraction.
+            internal int Moved;
             internal readonly List<int> Repeating = new List<int>();
             // A value not typed as digits: a constant, a random value, or a carried result.
             internal Num? Literal;
@@ -107,7 +110,7 @@ namespace Calculator
 
             internal Entry Clone()
             {
-                var e = new Entry { Negative = Negative, Point = Point, Zeros = Zeros, Literal = Literal, Constant = Constant, Carried = Carried };
+                var e = new Entry { Negative = Negative, Point = Point, Zeros = Zeros, Moved = Moved, Literal = Literal, Constant = Constant, Carried = Carried };
                 e.Whole.AddRange(Whole);
                 e.Fraction.AddRange(Fraction);
                 e.Repeating.AddRange(Repeating);
@@ -117,7 +120,7 @@ namespace Calculator
             internal string Signature()
             {
                 var lit = Literal.HasValue ? (Literal.Value.Exact ? Literal.Value.N + "/" + Literal.Value.D : Literal.Value.F.ToString("R")) : "";
-                return $"{Negative}|{string.Concat(Whole)}|{Point}|{string.Concat(Fraction)}|{Zeros}|{string.Concat(Repeating)}|{lit}|{Constant}|{Carried}";
+                return $"{Negative}|{string.Concat(Whole)}|{Point}|{string.Concat(Fraction)}|{Zeros}|{Moved}|{string.Concat(Repeating)}|{lit}|{Constant}|{Carried}";
             }
         }
 
@@ -283,14 +286,21 @@ namespace Calculator
                     zeros++;
                 }
                 e.Zeros = zeros;
+                e.Moved = zeros;
             }
             else if (e.Zeros + 1 < Calculator.Glyphs.Repeat.Length)
             {
                 e.Zeros++;
             }
+            else if (e.Repeating.Count > 0)
+            {
+                e.Zeros = 0;
+            }
             else
             {
-                e.Zeros = e.Repeating.Count > 0 ? 0 : -1;
+                e.Zeros = -1;
+                e.Fraction.AddRange(Enumerable.Repeat(0, e.Moved));
+                e.Moved = 0;
             }
         }
 
