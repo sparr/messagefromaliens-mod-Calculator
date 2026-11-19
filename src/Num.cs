@@ -45,27 +45,56 @@ namespace Calculator
 
         internal bool IsInteger => Exact && D.IsOne;
         internal bool IsZero => Exact ? N.IsZero : F == 0;
-        internal int Sign => Exact ? N.Sign : Math.Sign(F);
+        // Zero for NaN, which Math.Sign would throw on.
+        internal int Sign => Exact ? N.Sign : double.IsNaN(F) ? 0 : Math.Sign(F);
         internal bool Finite => Exact || (!double.IsNaN(F) && !double.IsInfinity(F));
 
         internal double ToDouble() => Exact ? Ratio(N, D) : F;
 
+        // n / d to a double's precision, for any sizes: a quotient of about 62 bits, scaled by the
+        // power of two it was shifted by. Overflows to infinity and underflows to zero as a
+        // double would.
         private static double Ratio(BigInteger n, BigInteger d)
         {
-            // Scale both down together so large values keep their precision.
-            var shift = Math.Max(0, (int)Math.Max(n.IsZero ? 0 : BigInteger.Log(BigInteger.Abs(n), 2), BigInteger.Log(d, 2)) - 1000);
-            if (shift > 0)
+            if (n.IsZero)
             {
-                n >>= shift;
-                d >>= shift;
+                return 0;
             }
-            return d.IsZero ? double.PositiveInfinity * n.Sign : (double)n / (double)d;
+            var negative = n.Sign < 0;
+            n = BigInteger.Abs(n);
+            var e = (long)Math.Floor(BigInteger.Log(n, 2)) - (long)Math.Floor(BigInteger.Log(d, 2));
+            var shift = 62 - e;
+            var q = shift >= 0 ? (n << (int)Math.Min(shift, int.MaxValue)) / d : n / (d << (int)Math.Min(-shift, int.MaxValue));
+            var f = (double)q * Math.Pow(2, -shift);
+            if (double.IsNaN(f))
+            {
+                // A power of two out of range times a nonzero quotient.
+                f = shift < 0 ? double.PositiveInfinity : 0;
+            }
+            return negative ? -f : f;
         }
+
+        // The natural log of a positive value, from its exact parts when it has them, so values
+        // beyond a double's range still have one.
+        private static double Ln(Num a) =>
+            a.Exact ? BigInteger.Log(BigInteger.Abs(a.N)) - BigInteger.Log(a.D) : Math.Log(a.F);
+
+        // A sum or difference of doubles that cancels to within their rounding error is zero, as
+        // 0.1 + 0.2 - 0.3 should be.
+        private static Num Cancel(double result, double a, double b) =>
+            Of(Math.Abs(result) <= 1e-12 * Math.Max(Math.Abs(a), Math.Abs(b)) ? 0 : result);
 
         internal Num Negate() => Exact ? Of(-N, D) : Of(-F);
 
-        public static Num operator +(Num a, Num b) =>
-            a.Exact && b.Exact ? Of(a.N * b.D + b.N * a.D, a.D * b.D) : Of(a.ToDouble() + b.ToDouble());
+        public static Num operator +(Num a, Num b)
+        {
+            if (a.Exact && b.Exact)
+            {
+                return Of(a.N * b.D + b.N * a.D, a.D * b.D);
+            }
+            double x = a.ToDouble(), y = b.ToDouble();
+            return Cancel(x + y, x, y);
+        }
 
         public static Num operator -(Num a, Num b) => a + b.Negate();
 
@@ -110,10 +139,20 @@ namespace Calculator
             }
             else
             {
-                quotient = Of(Math.Floor(a.ToDouble() / b.ToDouble()));
+                // A quotient within rounding error of a simple fraction, such as 3 shown for
+                // 2.9999999999999996, is floored as that fraction.
+                var q = Glyphs.Snap(Of(a.ToDouble() / b.ToDouble()));
+                quotient = q.Exact ? Of(Floor(q.N, q.D)) : Of(Math.Floor(q.F));
             }
             remainder = a - b * quotient;
             return true;
+        }
+
+        // The whole number at or below n / d, for d > 0.
+        private static BigInteger Floor(BigInteger n, BigInteger d)
+        {
+            var q = BigInteger.DivRem(n, d, out var r);
+            return r.Sign < 0 ? q - 1 : q;
         }
 
         // The nth root: exact when the value is an exact nth power. Null for an even root of a
@@ -137,27 +176,38 @@ namespace Calculator
             return Of(n == 2 ? Math.Sqrt(f) : n == 3 ? Math.Cbrt(f) : Math.Sign(f) * Math.Pow(Math.Abs(f), 1.0 / n));
         }
 
-        // The exact nth root of x, if x is an nth power small enough for a double estimate.
+        // The exact nth root of x, if x is an nth power: the integer root by Newton's method,
+        // from an estimate above it, then checked.
         private static BigInteger? IntegerRoot(BigInteger x, int n)
         {
-            var f = (double)x;
-            if (double.IsInfinity(f))
+            if (x.Sign <= 0)
             {
-                return null;
+                return x.IsZero ? BigInteger.Zero : (BigInteger?)null;
             }
-            var guess = new BigInteger(Math.Round(Math.Pow(f, 1.0 / n)));
-            for (var r = BigInteger.Max(0, guess - 2); r <= guess + 2; r++)
+            var bits = (int)Math.Floor(BigInteger.Log(x, 2)) + 1;
+            var r = BigInteger.One << ((bits + n - 1) / n);
+            while (true)
             {
-                if (BigInteger.Pow(r, n) == x)
+                var next = ((n - 1) * r + x / BigInteger.Pow(r, n - 1)) / n;
+                if (next >= r)
                 {
-                    return r;
+                    break;
                 }
+                r = next;
             }
-            return null;
+            return BigInteger.Pow(r, n) == x ? r : (BigInteger?)null;
         }
 
-        internal static Num Sin(Num a) => Of(Math.Sin(a.ToDouble()));
-        internal static Num Cos(Num a) => Of(Math.Cos(a.ToDouble()));
+        internal static Num Sin(Num a) => Trig(Math.Sin, a.ToDouble());
+        internal static Num Cos(Num a) => Trig(Math.Cos, a.ToDouble());
+
+        // Zero where the true value is zero but pi's rounding leaves a tiny remainder, as for the
+        // sine of pi. The remainder grows with the argument.
+        private static Num Trig(System.Func<double, double> f, double x)
+        {
+            var r = f(x);
+            return Of(Math.Abs(x) >= 1 && Math.Abs(r) <= 1e-15 * Math.Abs(x) ? 0 : r);
+        }
 
         // Exact for an integer power of an exact value, unless the result would be huge.
         internal static Num? Power(Num a, Num b)
@@ -189,7 +239,7 @@ namespace Calculator
             {
                 return null;
             }
-            var f = Math.Log(x.ToDouble()) / Math.Log(b.ToDouble());
+            var f = Ln(x) / Ln(b);
             if (double.IsNaN(f) || double.IsInfinity(f))
             {
                 return null;
@@ -248,7 +298,8 @@ namespace Calculator
                 }
             }
             var f = v.ToDouble();
-            if (double.IsInfinity(f))
+            // The game's writer for the scientific form overflows past about 4.5e307.
+            if (double.IsInfinity(f) || Math.Abs(f) > 4e307)
             {
                 if (!scientific)
                 {
@@ -257,14 +308,14 @@ namespace Calculator
                 // Beyond what a double holds, which the game's scientific form needs.
                 return f < 0 ? new List<string> { Negative, Infinite } : new List<string> { Infinite };
             }
-            var rounded = Round(f, maxPlace);
+            // Rounded to the smallest place, unless that keeps fewer than three significant digits
+            // and the scientific form can keep them.
+            var rounded = scientific && Math.Abs(f) < Math.Pow(7, MinPlace + 2) ? null : Round(f, maxPlace);
             if (rounded != null)
             {
                 var written = WriteExact(rounded.Value.N, rounded.Value.D, maxPlace);
                 if (written != null && written.Count <= maxCells)
                 {
-                    // A double that rounds to itself is as exact as it can be shown.
-                    exact = !v.Exact && Math.Abs(f - rounded.Value.ToDouble()) <= 1e-12 * Math.Max(1, Math.Abs(f));
                     return written;
                 }
             }
@@ -277,8 +328,13 @@ namespace Calculator
             return Scientific(f);
         }
 
+        // The value as the simple fraction it is within rounding error of, or itself. Results
+        // are computed and carried as this, so what is shown is what is used.
+        internal static Num Snap(Num v) => !v.Exact && Simple(v.F) is Num s ? s : v;
+
         // A fraction with a small denominator that a double differs from only by rounding error,
-        // such as the sine of pi/6, which a double puts just below 1/2.
+        // such as the sine of pi/6, which a double puts just below 1/2. Zero is the exception:
+        // a value near zero is small, not wrong, so it is never taken for zero.
         private static Num? Simple(double f)
         {
             const int MaxDenominator = 2401;
@@ -291,7 +347,7 @@ namespace Calculator
             var rest = x - h1;
             while (true)
             {
-                if (Math.Abs(x - h1 / k1) <= 1e-12 * Math.Max(1, x))
+                if (Math.Abs(x - h1 / k1) <= 1e-12 * x)
                 {
                     var n = new BigInteger(h1);
                     return Num.Of(f < 0 ? -n : n, new BigInteger(k1));
@@ -343,16 +399,22 @@ namespace Calculator
         private static int Compare(BigInteger n, BigInteger d, int k) =>
             k >= 0 ? n.CompareTo(d * BigInteger.Pow(Seven, k)) : (n * BigInteger.Pow(Seven, -k)).CompareTo(d);
 
-        // Rounded to the smallest place, or null if that is too far from the value or out of range.
+        // Rounded to the smallest place as the game rounds: the last digit goes up by one only
+        // when the next digit is 4 or more. Null if out of range, or if that rounds to zero.
         private static Num? Round(double f, int maxPlace)
         {
             var scale = Math.Pow(7, -MinPlace);
-            var scaled = Math.Round(f * scale);
-            if (Math.Abs(f) >= Math.Pow(7, maxPlace + 1) || (scaled == 0 && f != 0))
+            var a = Math.Abs(f) * scale;
+            var t = Math.Floor(a);
+            if (Math.Floor((a - t) * 7) >= 4)
+            {
+                t++;
+            }
+            if (Math.Abs(f) >= Math.Pow(7, maxPlace + 1) || (t == 0 && f != 0))
             {
                 return null;
             }
-            return Num.Of(new BigInteger(scaled), new BigInteger(scale));
+            return Num.Of(new BigInteger(f < 0 ? -t : t), new BigInteger(scale));
         }
 
         // The game's own scientific form, for values outside the places it draws.
