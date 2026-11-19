@@ -597,6 +597,9 @@ namespace Calculator
 
             private object Peek => pos < items.Count ? items[pos] : null;
 
+            // An operation that gave NaN, such as 0 times infinity, has no value.
+            private static Num? Checked(Num? v) => v.HasValue && !v.Value.Exact && double.IsNaN(v.Value.F) ? null : v;
+
             internal Num? Expression()
             {
                 if (Peek is Prefix)
@@ -614,7 +617,7 @@ namespace Calculator
                     }
                     Ops++;
                     LastOp = op;
-                    left = Apply(op, left.Value, right.Value);
+                    left = Checked(Apply(op, left.Value, right.Value));
                 }
                 return left;
             }
@@ -628,7 +631,7 @@ namespace Calculator
                 {
                     return null;
                 }
-                return p.Func == Func.Sine ? Num.Sin(arg.Value) : Num.Cos(arg.Value);
+                return Checked(p.Func == Func.Sine ? Num.Sin(arg.Value) : Num.Cos(arg.Value));
             }
 
             private Num? Apply(Op op, Num left, Num right)
@@ -681,18 +684,18 @@ namespace Calculator
                         return null;
                     }
                     pos++;
-                    v = Apply(Op.Scientific, v.Value, power.Value);
+                    v = Checked(Apply(Op.Scientific, v.Value, power.Value));
                 }
                 while (v.HasValue && Peek is Postfix p)
                 {
                     pos++;
-                    v = p.Func switch
+                    v = Checked(p.Func switch
                     {
                         Func.Square => Num.Power(v.Value, Num.Of(new BigInteger(2))),
                         Func.Cube => Num.Power(v.Value, Num.Of(new BigInteger(3))),
                         Func.SquareRoot => Num.Root(v.Value, 2),
                         _ => Num.Root(v.Value, 3),
-                    };
+                    });
                 }
                 return v;
             }
