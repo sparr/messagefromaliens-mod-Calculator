@@ -567,7 +567,9 @@ namespace Calculator
             approximate = shownApproximate || hasRemainder;
             if (!approximate || f.Approximate)
             {
-                carry = outcome.Value;
+                // The value as shown: a double within rounding error of a simple fraction is
+                // carried as that fraction.
+                carry = Calculator.Glyphs.Snap(outcome.Value.Value);
             }
             return list;
         }
