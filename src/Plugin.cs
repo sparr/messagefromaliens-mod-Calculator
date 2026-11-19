@@ -35,7 +35,7 @@ namespace Calculator
                 Described("Show the calculator's button in the left panel's menu, once it is unlocked.", "calculate de button"));
 
             Figures = Config.Bind("Calculator", "SignificantFigures", 4,
-                Described("Results with this many whole-number places or more are written in scientific form. Places the game has not shown yet are never used.",
+                Described("Results of 7 to this power and above, which have one more whole-number place than this, are written in scientific form. Places the game has not shown yet are never used.",
                     "num amount", new AcceptableValueList<int>(1, 2, 3, 4, 5, 6),
                     Enumerable.Range(1, 6).ToDictionary(i => i.ToString(), i => i.ToString())));
             Division = Config.Bind("Calculator", "Division", DivisionMode.Fraction,
