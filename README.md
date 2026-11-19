@@ -69,7 +69,7 @@ Each feature unlocks with the quiz that first tests it.
 | `Calculator.SignificantFigures` | `4` | Use the scientific form for values of 7 to this power and above, from 1 to 6. |
 | `Calculator.Division` | `Fraction` | Show division results as a `Fraction`, or as a whole number and a `Remainder`, once fractions are unlocked. |
 
-The calculator's settings row changes the last two. Each setting is tagged with its name in glyphs, and the mod names itself in glyphs, so Mod Settings can show them in the game.
+The calculator's settings row changes the last two. Each setting is tagged with its name in glyphs, and the mod names itself in glyphs, so Mod Settings can show them in the game. Mod Settings lists each setting once the quiz that unlocks its feature, as listed under [Unlocking](#unlocking), is won.
 
 ## Requirements
 

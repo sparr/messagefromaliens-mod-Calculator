@@ -16,12 +16,12 @@ namespace Calculator
     {
         // Quizzes as the game records them solved. The seventh and later are numbered in base 7:
         // the tenth is "1e1-3". Each feature unlocks with the quiz that first tests it.
-        private const string Quiz2 = "arithmetic-riddle-2";
+        internal const string Quiz2 = "arithmetic-riddle-2";
         private const string Quiz3 = "arithmetic-riddle-3";
-        private const string Quiz4 = "arithmetic-riddle-4";
+        internal const string Quiz4 = "arithmetic-riddle-4";
         private const string Quiz9 = "arithmetic-riddle-1e1-2";
         private const string Quiz10 = "arithmetic-riddle-1e1-3";
-        private const string Quiz11 = "arithmetic-riddle-1e1-4";
+        internal const string Quiz11 = "arithmetic-riddle-1e1-4";
         private const string GeometryQuiz1 = "geometry-riddle-1";
         private const string GeometryQuiz7 = "geometry-riddle-1e1";
         private const string AdvancedQuiz1 = "advanced-arithmetic-riddle-1";
