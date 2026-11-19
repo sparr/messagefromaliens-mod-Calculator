@@ -399,6 +399,10 @@ namespace Calculator
         [HarmonyPatch(typeof(Draw), nameof(Draw.UpdateText1))]
         private static class UpdateText1Patch
         {
+            private static void Prefix() => drawing = true;
+
+            private static void Finalizer() => drawing = false;
+
             private static void Postfix(Draw __instance)
             {
                 try
@@ -630,19 +634,44 @@ namespace Calculator
             }
         }
 
-        // Anything new in the panel's history replaces the calculator.
+        // Set while the game's Update handles a mouse click, outside its redraw.
+        private static bool clicking;
+
+        // Set while the game redraws, where one of its pages pushes its own entry again.
+        private static bool drawing;
+
+        // A click on a link or button that opens a left panel page replaces the calculator, even
+        // when the page is the entry under it. Other pushes replace it only when they add an
+        // entry, since one page pushes its own entry again on every redraw. A push of the entry
+        // under the calculator adds nothing: the game itself skips only entries stored with one
+        // separator, and stores a word's information with two. This runs after other mods'
+        // prefixes, which can change the text.
         [HarmonyPatch(typeof(Draw), nameof(Draw.PushLeftText))]
         private static class PushLeftTextPatch
         {
-            private static void Prefix(Draw __instance)
+            [HarmonyPriority(Priority.Last)]
+            private static bool Prefix(Draw __instance, string title, string info, bool noparse)
             {
                 try
                 {
-                    Close(__instance);
+                    var d = __instance;
+                    if (!open)
+                    {
+                        return true;
+                    }
+                    var same = d.currenttext >= 0 && d.currenttext < d.text_history.Count
+                        && d.text_history[d.currenttext] == title + (noparse ? "&&" : "&") + info;
+                    if (same && !(clicking && !drawing))
+                    {
+                        return true;
+                    }
+                    Close(d);
+                    return !same;
                 }
                 catch (Exception e)
                 {
                     Plugin.Log.LogError($"PushLeftText prefix failed: {e}");
+                    return true;
                 }
             }
         }
@@ -656,6 +685,7 @@ namespace Calculator
             private static void Prefix(Draw __instance, out int __state)
             {
                 __state = -1;
+                clicking = Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1);
                 try
                 {
                     var d = __instance;
@@ -703,6 +733,8 @@ namespace Calculator
                     Plugin.Log.LogError($"Update postfix failed: {e}");
                 }
             }
+
+            private static void Finalizer() => clicking = false;
         }
     }
 }

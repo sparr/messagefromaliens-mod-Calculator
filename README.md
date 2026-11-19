@@ -14,7 +14,7 @@ Install BepInEx first, if you haven't already, as described under [Requirements]
 
 ## Use
 
-Once unlocked, a button at the right end of the left panel's top menu opens the calculator in the panel, and clicking it again returns to what the panel showed before. The calculator keeps its expression while closed.
+Once unlocked, a button at the right end of the left panel's top menu opens the calculator in the panel, and clicking it again returns to what the panel showed before. Clicking a link or button that opens a page in the left panel closes the calculator and shows that page, even when it is the page the calculator covers, without adding a second history entry for it. The calculator keeps its expression while closed.
 
 The panel shows the current input expression, its result below it, and rows of keys as they unlock:
 
@@ -99,8 +99,8 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 | Method | Patch |
 |---|---|
 | `Draw.Write` | Prefix: adds the button to the left panel's menu, and while the calculator is open, draws it in place of the panel's title and text, with only the history buttons left in the menu. |
-| `Draw.PushLeftText` | Prefix: closes the calculator when the game shows something new in the left panel. |
-| `Draw.UpdateText1` | Postfix: boxes the current division setting and underlines the keys that would do something. |
-| `Draw.Update` | Prefix and postfix: with the calculator open, makes the panel's history buttons show the entry under the calculator or the one after it, instead of stepping from it. Postfix: shows the clickable cursor over the calculator's keys. |
+| `Draw.PushLeftText` | Prefix, after other mods' prefixes: closes the calculator when a click shows a page in the left panel, or when the game adds a history entry there. With the calculator open, skips a push of the entry under it, which the game would add again for a word's information. |
+| `Draw.UpdateText1` | Prefix and finalizer: mark the redraw, whose pushes of the current entry leave the calculator open. Postfix: boxes the current division setting and underlines the keys that would do something. |
+| `Draw.Update` | Prefix and finalizer: mark a frame with a mouse click, for the `PushLeftText` prefix. Prefix and postfix: with the calculator open, makes the panel's history buttons show the entry under the calculator or the one after it, instead of stepping from it. Postfix: shows the clickable cursor over the calculator's keys. |
 
 The plugin's `LateUpdate` handles clicks on the button and keys, since the game ignores clicks on glyphs it does not know, and typing while the calculator is open.
