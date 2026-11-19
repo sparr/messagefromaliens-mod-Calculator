@@ -434,7 +434,9 @@ namespace Calculator
         private static void Type(Draw d)
         {
             var typed = Input.inputString;
-            if (string.IsNullOrEmpty(typed) || TextFieldFocused())
+            // A field whose edit Enter ended earlier this frame no longer has focus, but its keys
+            // were typed into it.
+            if (string.IsNullOrEmpty(typed) || TextFieldFocused() || focusedLastFrame)
             {
                 return;
             }
@@ -498,6 +500,9 @@ namespace Calculator
             }
             return true;
         }
+
+        // Whether a text field had the keyboard at the end of the last frame.
+        private static bool focusedLastFrame;
 
         // The player's decimal separator. Unity runs with the invariant culture, so ask Windows
         // (or Wine, which follows the Unix locale) for the user's setting.
@@ -566,6 +571,7 @@ namespace Calculator
             {
                 Type(d);
             }
+            focusedLastFrame = TextFieldFocused();
             if (!Input.GetMouseButtonDown(0))
             {
                 return;
