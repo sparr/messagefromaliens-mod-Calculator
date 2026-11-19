@@ -703,34 +703,39 @@ namespace Calculator
             }
         }
 
-        // The expression's glyphs: typed numbers with places up to 7^entryPlace, other values up
-        // to 7^valuePlace, beyond which they use the scientific form if allowed.
-        internal List<string> Glyphs(int entryPlace, int valuePlace, bool scientific)
+        // The expression row: the newest items that fit in width cells, whole, so that no number
+        // loses its sign or leading digits. Typed numbers use places up to 7^entryPlace, other
+        // values up to 7^valuePlace, beyond which they use the scientific form if allowed.
+        internal List<string> ExpressionRow(int entryPlace, int valuePlace, bool scientific, int width)
         {
-            var list = new List<string>();
+            var groups = new List<List<string>>();
             foreach (var item in items)
             {
                 switch (item)
                 {
                     case Op op:
-                        list.Add(Keys.Word(op));
+                        groups.Add(new List<string> { Keys.Word(op) });
                         break;
                     case Prefix p:
-                        list.Add(Keys.Word(p.Func));
-                        list.Add(Keys.On);
+                        groups.Add(new List<string> { Keys.Word(p.Func), Keys.On });
                         break;
                     case Postfix p:
-                        list.Add(Keys.Word(p.Func));
+                        groups.Add(new List<string> { Keys.Word(p.Func) });
                         break;
                     case Entry e:
-                        list.AddRange(EntryGlyphs(e, entryPlace, valuePlace, scientific));
+                        groups.Add(EntryGlyphs(e, entryPlace, valuePlace, scientific, width).ToList());
                         break;
                 }
+            }
+            var list = new List<string>();
+            for (var i = groups.Count - 1; i >= 0 && list.Count + groups[i].Count <= width; i--)
+            {
+                list.InsertRange(0, groups[i]);
             }
             return list;
         }
 
-        private static IEnumerable<string> EntryGlyphs(Entry e, int entryPlace, int valuePlace, bool scientific)
+        private static IEnumerable<string> EntryGlyphs(Entry e, int entryPlace, int valuePlace, bool scientific, int width)
         {
             var list = new List<string>();
             if (e.Constant.HasValue)
@@ -744,7 +749,8 @@ namespace Calculator
             }
             if (e.Literal.HasValue)
             {
-                return Calculator.Glyphs.Write(e.Value, out _, valuePlace, scientific) ?? new List<string> { Keys.NoValue };
+                // Within the row's width, as the result row writes it.
+                return Calculator.Glyphs.Write(e.Value, out _, valuePlace, scientific, width) ?? new List<string> { Keys.NoValue };
             }
             if (e.Negative)
             {

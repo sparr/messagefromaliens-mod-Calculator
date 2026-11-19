@@ -163,14 +163,10 @@ namespace Calculator
         private static string Body()
         {
             var f = Unlocked();
-            var expression = calc.Glyphs(SeenPlace(), ValuePlace(f), f.Scientific);
             // The newest part of a long expression, leaving the last cell for the sign that the
             // expression is approximate.
             var width = calc.Approximate ? RowWidth - 1 : RowWidth;
-            if (expression.Count > width)
-            {
-                expression = expression.Skip(expression.Count - width).ToList();
-            }
+            var expression = calc.ExpressionRow(SeenPlace(), ValuePlace(f), f.Scientific, width);
             if (calc.Approximate)
             {
                 expression.AddRange(Enumerable.Repeat(Gap, width - expression.Count));
