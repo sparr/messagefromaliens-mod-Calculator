@@ -134,6 +134,8 @@ namespace Calculator
         // Entries, Ops, Prefixes, and Postfixes.
         private List<object> items = new List<object>();
 
+        // The longest expression, so that evaluating and drawing it stays cheap.
+        private const int MaxItems = 100;
         private const int MaxHistory = 200;
 
         // The state before each key press that changed the expression, for the back key.
@@ -145,7 +147,8 @@ namespace Calculator
         private string Signature() =>
             Approximate + ";" + string.Join(";", items.Select(i => i is Entry e ? "N" + e.Signature() : i is Prefix p ? "P" + p.Func : i is Postfix q ? "Q" + q.Func : "O" + i));
 
-        // Runs a key press, and records the state before it if it changed anything.
+        // Runs a key press, and records the state before it if it changed anything. A press that
+        // would make the expression too long is undone.
         internal void Record(Action press)
         {
             var before = (CloneItems(), Approximate);
@@ -154,6 +157,11 @@ namespace Calculator
             press();
             if (undid)
             {
+                return;
+            }
+            if (items.Count > MaxItems)
+            {
+                (items, Approximate) = before;
                 return;
             }
             if (Signature() != signature)
