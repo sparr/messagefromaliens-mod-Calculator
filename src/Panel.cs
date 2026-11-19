@@ -676,6 +676,24 @@ namespace Calculator
             }
         }
 
+        // Another save slot has its own unlocks, so the expression does not carry over.
+        [HarmonyPatch(typeof(Global), nameof(Global.LoadGame))]
+        private static class LoadGamePatch
+        {
+            private static void Postfix()
+            {
+                try
+                {
+                    calc.Forget();
+                    Close(Manager);
+                }
+                catch (Exception e)
+                {
+                    Plugin.Log.LogError($"LoadGame postfix failed: {e}");
+                }
+            }
+        }
+
         [HarmonyPatch(typeof(Draw), "Update")]
         private static class UpdatePatch
         {
