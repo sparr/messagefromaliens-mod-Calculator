@@ -218,57 +218,8 @@ namespace Calculator
 
         private static IEnumerable<T> Values<T>() where T : Enum => Enum.GetValues(typeof(T)).Cast<T>();
 
-        // The result row, and the value [=] would carry with whether carrying it is approximate.
-        // The value is null when there is none to carry, or when it would be approximate before
-        // the approximately-equal sign is unlocked. A remainder of zero is not shown.
-        private static List<string> Result(Features f, out Num? carry, out bool approximate)
-        {
-            carry = null;
-            approximate = false;
-            var list = new List<string>();
-            var outcome = calc.Evaluate(f, Mode(f));
-            if (!outcome.Any)
-            {
-                return list;
-            }
-            var place = ValuePlace(f);
-            var exact = false;
-            var value = outcome.Value.HasValue ? Glyphs.Write(outcome.Value.Value, out exact, place, f.Scientific, RowWidth - 1) : null;
-            List<string> remainder = null;
-            var remainderExact = true;
-            var hasRemainder = outcome.Remainder is Num r && !r.IsZero;
-            if (value != null && hasRemainder)
-            {
-                remainder = Glyphs.Write(outcome.Remainder.Value, out remainderExact, place, f.Scientific);
-                if (remainder != null && value.Count + 2 + remainder.Count > RowWidth)
-                {
-                    remainder = null;
-                }
-            }
-            // What the row shows is approximate after an approximate carry, for a rounded value,
-            // or for a remainder that is rounded or does not fit.
-            var shownApproximate = calc.Approximate || !exact || (hasRemainder && (remainder == null || !remainderExact));
-            if (value == null || (shownApproximate && !f.Approximate))
-            {
-                list.Add(Keys.Equal);
-                list.Add(Keys.NoValue);
-                return list;
-            }
-            list.Add(shownApproximate ? Keys.Approximately : Keys.Equal);
-            list.AddRange(value);
-            if (remainder != null)
-            {
-                list.Add(Keys.Remainder);
-                list.AddRange(remainder);
-            }
-            // Carrying the quotient alone drops the remainder.
-            approximate = shownApproximate || hasRemainder;
-            if (!approximate || f.Approximate)
-            {
-                carry = outcome.Value;
-            }
-            return list;
-        }
+        private static List<string> Result(Features f, out Num? carry, out bool approximate) =>
+            calc.ResultRow(f, Mode(f), ValuePlace(f), RowWidth, out carry, out approximate);
 
         // [=]: carry the result into a new expression. Once anything carried is approximate, so
         // is everything after it, until the expression is cleared.

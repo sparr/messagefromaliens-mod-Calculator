@@ -484,12 +484,16 @@ namespace Calculator
             internal readonly Num? Remainder;
             // False when there is nothing to evaluate yet.
             internal readonly bool Any;
+            // A division inside a longer expression dropped a remainder, so the value is not
+            // exactly what the expression says.
+            internal readonly bool Dropped;
 
-            internal Outcome(bool any, Num? value, Num? remainder = null)
+            internal Outcome(bool any, Num? value, Num? remainder = null, bool dropped = false)
             {
                 Any = any;
                 Value = value;
                 Remainder = remainder;
+                Dropped = dropped;
             }
         }
 
@@ -501,15 +505,71 @@ namespace Calculator
             }
             // Until fractions are unlocked, division always shows a remainder.
             var whole = !f.Fractions || mode == DivisionMode.Remainder;
-            if (whole && items.Count == 3 && items[1] is Op op && op == Op.Divide && items[0] is Entry a && items[2] is Entry b)
-            {
-                return Num.FloorDivide(a.Value, b.Value, out var q, out var r)
-                    ? new Outcome(true, q, r)
-                    : new Outcome(true, null);
-            }
             var parser = new Parser(items, whole);
             var v = parser.Expression();
-            return new Outcome(true, parser.Done ? v : null);
+            if (!v.HasValue)
+            {
+                return new Outcome(true, null);
+            }
+            // A single division, of values that may be joined by E or followed by functions,
+            // shows its remainder.
+            if (whole && parser.Ops == 1 && parser.LastOp == Op.Divide && !parser.Prefixed)
+            {
+                return new Outcome(true, v, parser.LastRemainder);
+            }
+            return new Outcome(true, v, dropped: parser.Dropped);
+        }
+
+        // The result row, and the value [=] would carry with whether carrying it is approximate.
+        // The value is null when there is none to carry, or when it would be approximate before
+        // the approximately-equal sign is unlocked. A remainder of zero is not shown. width is the
+        // row's width in cells.
+        internal List<string> ResultRow(Features f, DivisionMode mode, int place, int width, out Num? carry, out bool approximate)
+        {
+            carry = null;
+            approximate = false;
+            var list = new List<string>();
+            var outcome = Evaluate(f, mode);
+            if (!outcome.Any)
+            {
+                return list;
+            }
+            var exact = false;
+            var value = outcome.Value.HasValue ? Calculator.Glyphs.Write(outcome.Value.Value, out exact, place, f.Scientific, width - 1) : null;
+            List<string> remainder = null;
+            var remainderExact = true;
+            var hasRemainder = outcome.Remainder is Num r && !r.IsZero;
+            if (value != null && hasRemainder)
+            {
+                remainder = Calculator.Glyphs.Write(outcome.Remainder.Value, out remainderExact, place, f.Scientific);
+                if (remainder != null && value.Count + 2 + remainder.Count > width)
+                {
+                    remainder = null;
+                }
+            }
+            // What the row shows is approximate after an approximate carry, for a rounded value,
+            // for a remainder that is rounded or does not fit, or when a remainder was dropped.
+            var shownApproximate = Approximate || !exact || outcome.Dropped || (hasRemainder && (remainder == null || !remainderExact));
+            if (value == null || (shownApproximate && !f.Approximate))
+            {
+                list.Add(Keys.Equal);
+                list.Add(Keys.NoValue);
+                return list;
+            }
+            list.Add(shownApproximate ? Keys.Approximately : Keys.Equal);
+            list.AddRange(value);
+            if (remainder != null)
+            {
+                list.Add(Keys.Remainder);
+                list.AddRange(remainder);
+            }
+            // Carrying the quotient alone drops the remainder.
+            approximate = shownApproximate || hasRemainder;
+            if (!approximate || f.Approximate)
+            {
+                carry = outcome.Value;
+            }
+            return list;
         }
 
         // Operations follow the game's lesson on evaluation order: postfix functions apply first,
@@ -521,13 +581,19 @@ namespace Calculator
             private readonly bool whole;
             private int pos;
 
+            // The two-value operations applied, other than E, and the last of them.
+            internal int Ops;
+            internal Op LastOp;
+            internal bool Prefixed;
+            // The remainder of the last division, and whether any division dropped one.
+            internal Num? LastRemainder;
+            internal bool Dropped;
+
             internal Parser(List<object> items, bool whole)
             {
                 this.items = items;
                 this.whole = whole;
             }
-
-            internal bool Done => pos == items.Count;
 
             private object Peek => pos < items.Count ? items[pos] : null;
 
@@ -535,24 +601,27 @@ namespace Calculator
             {
                 if (Peek is Prefix)
                 {
-                    return Prefixed();
+                    return Prefix();
                 }
                 var left = Postfixed();
                 while (left.HasValue && Peek is Op op)
                 {
                     pos++;
-                    var right = Peek is Prefix ? Prefixed() : Postfixed();
+                    var right = Peek is Prefix ? Prefix() : Postfixed();
                     if (!right.HasValue)
                     {
                         return null;
                     }
+                    Ops++;
+                    LastOp = op;
                     left = Apply(op, left.Value, right.Value);
                 }
                 return left;
             }
 
-            private Num? Prefixed()
+            private Num? Prefix()
             {
+                Prefixed = true;
                 var p = (Prefix)items[pos++];
                 var arg = Expression();
                 if (!arg.HasValue)
@@ -575,7 +644,13 @@ namespace Calculator
                     case Op.Divide:
                         if (whole)
                         {
-                            return Num.FloorDivide(left, right, out var q, out _) ? q : (Num?)null;
+                            if (!Num.FloorDivide(left, right, out var q, out var r))
+                            {
+                                return null;
+                            }
+                            LastRemainder = r;
+                            Dropped |= !r.IsZero;
+                            return q;
                         }
                         return Num.Divide(left, right);
                     case Op.Exponent:
