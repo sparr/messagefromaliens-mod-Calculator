@@ -23,21 +23,21 @@ The panel shows the current input expression, its result below it, and rows of k
 - Functions of one value. Squares, cubes, and roots follow their operand. Other functions come before their operand, joined to it by the game's "on", and apply to the rest of the expression, as the game writes them.
 - Constants.
 - Settings: how division shows its result, and the significant figures.
-- Keys to delete the last key pressed, clear the expression, and replace the expression with its result.
+- Keys to undo the last key pressed, clear the expression, and replace the expression with its result.
 
 Evaluation order follows the game's lesson on it: functions that follow their operand apply first, then every operation applies from left to right, with no precedence between plus, minus, times, divide, exponent, and log. Typing 2 + 2 * 2 gives 8. E comes before all of these, joining the numbers on each side into one, as in the game's scientific form, so 2 + 1 E 2 is 2 + (1 E 2), and 1 E 2 squared is (1 E 2) squared. E takes a number on each side, so it cannot follow a function or start one.
 
-While the calculator is open and no text field has the keyboard, typing presses its keys: the digits 0 to 6, `+`, `-`, `*`, `/`, `^` for exponents, the decimal separator from your regional settings (`.` or `,`) for the point key, `E` for the scientific-form key, `e` and `p` for the constants, `=` or Enter for the result, and Backspace to delete the last key pressed. `-` is the sign key at the start of a number and right after an operation, and subtraction elsewhere.
+While the calculator is open and no text field has the keyboard, typing presses its keys: the digits 0 to 6, `+`, `-`, `*`, `/`, `^` for exponents, the decimal separator from your regional settings (`.` or `,`) for the point key, `E` for the scientific-form key, `e` and `p` for the constants, `=` or Enter for the result, and Backspace to undo the last key pressed. `-` is the sign key at the start of a number and right after an operation, and subtraction elsewhere.
 
 Keys not yet unlocked do nothing, and neither does an operation that cannot go where it is pressed. Keys that would do something are underlined, like the game's menu choices.
 
-Numbers are written the way the game writes them. A result within rounding error of a fraction with a denominator up to 7^4 is shown as that fraction. A result that cannot be written exactly is shown as approximately equal, rounded to three base-7 places. A result that does not exist, such as from division by zero, is shown as such.
+Numbers are written the way the game writes them. A result within rounding error of a fraction with a denominator up to 7^4 is shown as that fraction. A result that cannot be written exactly is shown as approximately equal, rounded to three base-7 places as the game rounds: the last digit goes up by one only when the next digit is 4 or more. A result that does not exist, such as from division by zero, is shown as such.
 
 Until the quiz after the game's lesson on the approximately-equal sign, a result that could only be shown approximately does not exist, and the result key will not carry a result that would be approximate. After that quiz, carrying an approximate result, or a quotient whose remainder is shown, makes the expression approximate: the approximately-equal sign stays in the last cell of the expression row, and every result is approximate until the expression is cleared or a new number is started.
 
-Places the game has not yet shown you are never used: typed numbers go no higher than the largest place your dictionary has a digit in. Until the quiz after the game's lesson on its scientific form, a result that needs a larger place does not exist, and a nonzero result too small for three places is approximately 0. After that quiz, values beyond the shown places are written in the scientific form, and so are values of 7^n and above, where n is the significant-figures setting, from 1 to 6; click its counter to change it.
+Places the game has not yet shown you are never used: typed numbers go no higher than the largest place your dictionary has a digit in. Until the quiz after the game's lesson on its scientific form, a result that needs a larger place does not exist, and so does a nonzero result too small for three places. After that quiz, values beyond the shown places are written in the scientific form, and so are values of 7^n and above, where n is the significant-figures setting, from 1 to 6; click its counter to change it.
 
-Division shows a fraction, or the whole number rounded down and a remainder, as chosen in the settings row once fractions are unlocked. The remainder has the divisor's sign, as the game's lesson on remainders teaches, and is shown when the expression is a single division and the remainder is not zero.
+Division shows a fraction, or the whole number rounded down and a remainder, as chosen in the settings row once fractions are unlocked. The remainder has the divisor's sign, as the game's lesson on remainders teaches, and is shown when the expression is a single division and the remainder is not zero. Numbers joined by E, and squares, cubes, and roots, count as one value of a single division. A division in a longer expression that drops a remainder makes the result approximate.
 
 A log is written as in the game, value then base: 4 log 2 equals 2.
 
@@ -100,7 +100,9 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 |---|---|
 | `Draw.Write` | Prefix: adds the button to the left panel's menu, and while the calculator is open, draws it in place of the panel's title and text, with only the history buttons left in the menu. |
 | `Draw.PushLeftText` | Prefix, after other mods' prefixes: closes the calculator when a click shows a page in the left panel, or when the game adds a history entry there. With the calculator open, skips a push of the entry under it, which the game would add again for a word's information. |
+| `Global.LoadGame` | Postfix: clears the expression and closes the calculator, since another save slot has its own unlocks. |
 | `Draw.UpdateText1` | Prefix and finalizer: mark the redraw, whose pushes of the current entry leave the calculator open. Postfix: boxes the current division setting and underlines the keys that would do something. |
-| `Draw.Update` | Prefix and finalizer: mark a frame with a mouse click, for the `PushLeftText` prefix. Prefix and postfix: with the calculator open, makes the panel's history buttons show the entry under the calculator or the one after it, instead of stepping from it. Postfix: shows the clickable cursor over the calculator's keys. |
+| `Draw.Update` | Prefix and finalizer: mark a frame with a mouse click, for the `PushLeftText` prefix. Prefix and postfix: with the calculator open, makes the panel's history buttons show the entry under the calculator or the one after it, instead of stepping from it. |
+| `HardwareCursor.Apply` | Prefix: gives the cursor the clickable color over the calculator's keys. |
 
 The plugin's `LateUpdate` handles clicks on the button and keys, since the game ignores clicks on glyphs it does not know, and typing while the calculator is open.
