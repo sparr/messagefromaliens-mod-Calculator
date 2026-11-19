@@ -694,6 +694,41 @@ namespace Calculator
             }
         }
 
+        // The game sets the cursor each frame from what is under it, in the color of nothing
+        // clickable for the calculator's keys; give it the clickable color instead. Setting it
+        // again after the game would change the cursor twice every frame.
+        [HarmonyPatch(typeof(HardwareCursor), nameof(HardwareCursor.Apply))]
+        private static class CursorPatch
+        {
+            private static void Prefix(ref Color c)
+            {
+                try
+                {
+                    var d = Manager;
+                    if (Showing(d) && c == d.DefaultColor(5) && IsKey(d, HitGlyph()))
+                    {
+                        c = d.DefaultColor(0);
+                    }
+                }
+                catch (Exception e)
+                {
+                    LogOnce($"Cursor prefix failed: {e}");
+                }
+            }
+        }
+
+        private static bool loggedPatchError;
+
+        // Patches that run every frame report only their first failure.
+        private static void LogOnce(string message)
+        {
+            if (!loggedPatchError)
+            {
+                loggedPatchError = true;
+                Plugin.Log.LogError(message);
+            }
+        }
+
         [HarmonyPatch(typeof(Draw), "Update")]
         private static class UpdatePatch
         {
@@ -727,11 +762,10 @@ namespace Calculator
                 }
                 catch (Exception e)
                 {
-                    Plugin.Log.LogError($"Update prefix failed: {e}");
+                    LogOnce($"Update prefix failed: {e}");
                 }
             }
 
-            // Also: the game sets the cursor each frame from what is under it; mark the keys clickable.
             private static void Postfix(Draw __instance, int __state)
             {
                 try
@@ -741,14 +775,10 @@ namespace Calculator
                         __instance.currenttext = __state;
                         __instance.UpdateText();
                     }
-                    if (IsKey(__instance, HitGlyph()))
-                    {
-                        HardwareCursor.Apply(__instance.DefaultColor(0), __instance.mousesize.x);
-                    }
                 }
                 catch (Exception e)
                 {
-                    Plugin.Log.LogError($"Update postfix failed: {e}");
+                    LogOnce($"Update postfix failed: {e}");
                 }
             }
 
