@@ -104,6 +104,21 @@ namespace Calculator
             }
 
             internal bool Empty => Typed && Whole.Count == 0 && !Point;
+
+            internal Entry Clone()
+            {
+                var e = new Entry { Negative = Negative, Point = Point, Zeros = Zeros, Literal = Literal, Constant = Constant, Carried = Carried };
+                e.Whole.AddRange(Whole);
+                e.Fraction.AddRange(Fraction);
+                e.Repeating.AddRange(Repeating);
+                return e;
+            }
+
+            internal string Signature()
+            {
+                var lit = Literal.HasValue ? (Literal.Value.Exact ? Literal.Value.N + "/" + Literal.Value.D : Literal.Value.F.ToString("R")) : "";
+                return $"{Negative}|{string.Concat(Whole)}|{Point}|{string.Concat(Fraction)}|{Zeros}|{string.Concat(Repeating)}|{lit}|{Constant}|{Carried}";
+            }
         }
 
         private sealed class Prefix
@@ -117,7 +132,60 @@ namespace Calculator
         }
 
         // Entries, Ops, Prefixes, and Postfixes.
-        private readonly List<object> items = new List<object>();
+        private List<object> items = new List<object>();
+
+        private const int MaxHistory = 200;
+
+        // The state before each key press that changed the expression, for the back key.
+        private readonly List<(List<object> Items, bool Approximate)> history = new List<(List<object>, bool)>();
+
+        private List<object> CloneItems() =>
+            items.Select(i => i is Entry e ? e.Clone() : i is Prefix p ? new Prefix { Func = p.Func } : i is Postfix q ? new Postfix { Func = q.Func } : i).ToList();
+
+        private string Signature() =>
+            Approximate + ";" + string.Join(";", items.Select(i => i is Entry e ? "N" + e.Signature() : i is Prefix p ? "P" + p.Func : i is Postfix q ? "Q" + q.Func : "O" + i));
+
+        // Runs a key press, and records the state before it if it changed anything.
+        internal void Record(Action press)
+        {
+            var before = (CloneItems(), Approximate);
+            var signature = Signature();
+            undid = false;
+            press();
+            if (undid)
+            {
+                return;
+            }
+            if (Signature() != signature)
+            {
+                history.Add(before);
+                if (history.Count > MaxHistory)
+                {
+                    history.RemoveAt(0);
+                }
+            }
+        }
+
+        // The back key: returns to the state before the last key press that changed anything.
+        internal void Back()
+        {
+            if (history.Count > 0)
+            {
+                (items, Approximate) = history[history.Count - 1];
+                history.RemoveAt(history.Count - 1);
+                undid = true;
+            }
+        }
+
+        // Set by Back, so that Record does not record the undo itself.
+        private bool undid;
+
+        // Forgets the expression and its history, as for another save slot.
+        internal void Forget()
+        {
+            Reset();
+            history.Clear();
+        }
 
         private object LastItem => items.Count > 0 ? items[items.Count - 1] : null;
         private Entry Last => LastItem as Entry;
@@ -363,62 +431,12 @@ namespace Calculator
         // A constant or random value, as by Literal.
         internal bool CanLiteral => Last != null || AwaitsNumber;
 
-        internal bool CanBack => items.Count > 0;
+        internal bool CanBack => history.Count > 0;
+
+        internal bool CanClear => items.Count > 0 || Approximate;
 
         // Only a carried result, which [=] would leave as it is.
         internal bool OnlyCarried => items.Count == 1 && Last != null && Last.Carried;
-
-        internal void Back()
-        {
-            var item = LastItem;
-            if (item == null)
-            {
-                return;
-            }
-            if (!(item is Entry e))
-            {
-                items.RemoveAt(items.Count - 1);
-                return;
-            }
-            if (e.Carried)
-            {
-                Reset();
-                return;
-            }
-            if (!e.Typed)
-            {
-                items.RemoveAt(items.Count - 1);
-                return;
-            }
-            if (e.Repeating.Count > 0)
-            {
-                e.Repeating.RemoveAt(e.Repeating.Count - 1);
-            }
-            else if (e.Zeros >= 0)
-            {
-                e.Zeros = -1;
-            }
-            else if (e.Fraction.Count > 0)
-            {
-                e.Fraction.RemoveAt(e.Fraction.Count - 1);
-            }
-            else if (e.Point)
-            {
-                e.Point = false;
-            }
-            else if (e.Whole.Count > 0)
-            {
-                e.Whole.RemoveAt(e.Whole.Count - 1);
-            }
-            else
-            {
-                e.Negative = false;
-            }
-            if (e.Empty && !e.Negative)
-            {
-                items.RemoveAt(items.Count - 1);
-            }
-        }
 
         internal void Clear() => Reset();
 

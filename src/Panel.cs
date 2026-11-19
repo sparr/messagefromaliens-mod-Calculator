@@ -283,6 +283,17 @@ namespace Calculator
 
         private static void Press(Draw d, string word, int line)
         {
+            var handled = true;
+            calc.Record(() => handled = Apply(word, line));
+            if (handled)
+            {
+                d.UpdateText();
+            }
+        }
+
+        // Applies a key to the expression or the settings; false for a word that is no key.
+        private static bool Apply(string word, int line)
+        {
             var f = Unlocked();
             if (line == DigitRow && word.Length == 1 && word[0] >= '0' && word[0] <= '6')
             {
@@ -341,9 +352,9 @@ namespace Calculator
             }
             else
             {
-                return;
+                return false;
             }
-            d.UpdateText();
+            return true;
         }
 
         // Whether pressing a key would do anything, mirroring Press.
@@ -385,9 +396,13 @@ namespace Calculator
             {
                 return f.Chance && calc.CanLiteral;
             }
-            if (word == Keys.Back || word == Keys.Clear)
+            if (word == Keys.Back)
             {
                 return calc.CanBack;
+            }
+            if (word == Keys.Clear)
+            {
+                return calc.CanClear;
             }
             if (word == Keys.Equal)
             {
@@ -476,12 +491,23 @@ namespace Calculator
             {
                 return;
             }
-            var f = Unlocked();
-            var point = DecimalSeparator.Value;
             var any = false;
             foreach (var c in typed)
             {
-                any = true;
+                calc.Record(() => any |= TypeKey(c));
+            }
+            if (any)
+            {
+                d.UpdateText();
+            }
+        }
+
+        // Applies one typed character; false for a character that is no key.
+        private static bool TypeKey(char c)
+        {
+            var f = Unlocked();
+            var point = DecimalSeparator.Value;
+            {
                 if (c >= '0' && c <= '6')
                 {
                     calc.Digit(c - '0', f, SeenPlace() + 1);
@@ -520,13 +546,10 @@ namespace Calculator
                 }
                 else
                 {
-                    any = false;
+                    return false;
                 }
             }
-            if (any)
-            {
-                d.UpdateText();
-            }
+            return true;
         }
 
         // The player's decimal separator. Unity runs with the invariant culture, so ask Windows
