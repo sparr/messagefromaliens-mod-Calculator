@@ -1,3 +1,22 @@
+using System.Reflection;
+using Calculator;
+
+// Unlock messages for Mod Settings, one per gate: the gate's token, then the words for what the
+// gate opens and where. Mod Settings builds the sentences around them, in the chapter's
+// explanation and on the page shown when the chapter's wins reach the gate's count. Each phrase
+// fits in one left panel row after its explanation prefix, except the scientific one.
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.Open + " " + Keys.Title)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.MultiplyDivide + " multiply and divide " + Gates.FromCalculator)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.Fractions + " " + Keys.Point + " " + Gates.FromCalculator)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.Squares + " exponent2 and exponent3 " + Gates.FromCalculator)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.PowerLog + " exponent and log " + Gates.FromCalculator)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.Scientific + " squareroot and " + Keys.Approximately + " and exp7 " + Gates.FromCalculator)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.Pi + " pi " + Gates.FromCalculator)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.CubeRoot + " root3 " + Gates.FromCalculator)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.Trig + " sin and cos " + Gates.FromCalculator)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.E + " e " + Gates.FromCalculator)]
+[assembly: AssemblyMetadata(Gates.UnlockKey, Gates.Chance + " " + Keys.Chance + " " + Gates.FromCalculator)]
+
 namespace Calculator
 {
     // When each feature unlocks, as gate tokens like those the game's menu lines start with. A
@@ -8,6 +27,8 @@ namespace Calculator
     // is listed exactly when the feature unlocks.
     internal static class Gates
     {
+        internal const string UnlockKey = "MessageFromAliens.Unlock";
+
         // What follows a chapter's name in its quiz names, before the quiz number.
         private const string QuizInfix = "-riddle-";
         private const string Arithmetic = "[arithmetic" + QuizInfix;
@@ -31,6 +52,9 @@ namespace Calculator
         internal const string Trig = Advanced + "1]";
         internal const string E = Advanced + "2]";
         internal const string Chance = Advanced + "4]";
+
+        // "in" the calculator, as the game's own unlock lines name where a feature is.
+        internal const string FromCalculator = "in " + Keys.Title;
 
         // Whether a gate token passes, as the game checks a menu line's gate.
         internal static bool Passed(string gate) =>

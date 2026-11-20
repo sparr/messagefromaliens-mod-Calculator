@@ -59,6 +59,8 @@ Each feature unlocks once you have won as many of a chapter's quizzes as the num
 | Advanced arithmetic, 2 | E |
 | Advanced arithmetic, 4 | A key that puts a random value from 0 to 1, to three base-7 places, in the expression |
 
+With [Mod Settings](https://github.com/sparr/messagefromaliens-mod-ModSettings) installed, each unlock is also announced in glyphs, in the game's own wording: a line at the end of the chapter's explanation, shown from the start, says how many of the chapter's quizzes to win to unlock it, and the page the game shows when that many are won says that you now unlock it.
+
 ## Configuration
 
 `BepInEx/config/sparr.messagefromaliens.calculator.cfg`, created on first launch:
