@@ -14,20 +14,6 @@ namespace Calculator
     // the calculator is closed.
     internal static class Panel
     {
-        // Quizzes as the game records them solved. The seventh and later are numbered in base 7:
-        // the tenth is "1e1-3". Each feature unlocks with the quiz that first tests it.
-        internal const string Quiz2 = "arithmetic-riddle-2";
-        private const string Quiz3 = "arithmetic-riddle-3";
-        internal const string Quiz4 = "arithmetic-riddle-4";
-        private const string Quiz9 = "arithmetic-riddle-1e1-2";
-        private const string Quiz10 = "arithmetic-riddle-1e1-3";
-        internal const string Quiz11 = "arithmetic-riddle-1e1-4";
-        private const string GeometryQuiz1 = "geometry-riddle-1";
-        private const string GeometryQuiz7 = "geometry-riddle-1e1";
-        private const string AdvancedQuiz1 = "advanced-arithmetic-riddle-1";
-        private const string AdvancedQuiz2 = "advanced-arithmetic-riddle-2";
-        private const string AdvancedQuiz4 = "advanced-arithmetic-riddle-4";
-
         private const string Gap = ".";
         private const string Newline = " newline ";
         // Glyph cells in one row of the left panel.
@@ -59,30 +45,22 @@ namespace Calculator
 
         private static Draw Manager => Global.manager;
 
-        internal static Features Unlocked()
+        internal static Features Unlocked() => new Features
         {
-            var won = Global.savedata?.win;
-            if (won == null)
-            {
-                return new Features();
-            }
-            return new Features
-            {
-                Open = won.Contains(Quiz2),
-                MultiplyDivide = won.Contains(Quiz3),
-                Fractions = won.Contains(Quiz4),
-                Squares = won.Contains(Quiz9),
-                PowerLog = won.Contains(Quiz10),
-                SquareRoot = won.Contains(Quiz11),
-                Scientific = won.Contains(Quiz11),
-                Approximate = won.Contains(Quiz11),
-                Pi = won.Contains(GeometryQuiz1),
-                CubeRoot = won.Contains(GeometryQuiz7),
-                Trig = won.Contains(AdvancedQuiz1),
-                E = won.Contains(AdvancedQuiz2),
-                Chance = won.Contains(AdvancedQuiz4),
-            };
-        }
+            Open = Gates.Passed(Gates.Open),
+            MultiplyDivide = Gates.Passed(Gates.MultiplyDivide),
+            Fractions = Gates.Passed(Gates.Fractions),
+            Squares = Gates.Passed(Gates.Squares),
+            PowerLog = Gates.Passed(Gates.PowerLog),
+            SquareRoot = Gates.Passed(Gates.Scientific),
+            Scientific = Gates.Passed(Gates.Scientific),
+            Approximate = Gates.Passed(Gates.Scientific),
+            Pi = Gates.Passed(Gates.Pi),
+            CubeRoot = Gates.Passed(Gates.CubeRoot),
+            Trig = Gates.Passed(Gates.Trig),
+            E = Gates.Passed(Gates.E),
+            Chance = Gates.Passed(Gates.Chance),
+        };
 
         // The largest place the player has seen a digit in, as the dictionary records every
         // glyph shown. Higher places would show glyphs the game has not.

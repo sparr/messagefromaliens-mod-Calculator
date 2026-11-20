@@ -31,20 +31,20 @@ namespace Calculator
         {
             Log = Logger;
 
-            // Each setting is listed in Mod Settings once the quiz that unlocks what it is for has
-            // been won, the same quiz the calculator checks.
+            // Each setting is listed in Mod Settings under its feature's gate, so it appears
+            // exactly when the feature unlocks.
             Enabled = Config.Bind("Calculator", "Enabled", true,
                 Described("Show the calculator's button in the left panel's menu, once it is unlocked.", "calculate de button",
-                    gate: QuizGate(Panel.Quiz2)));
+                    gate: Gates.Open));
 
             Figures = Config.Bind("Calculator", "SignificantFigures", 4,
                 Described("Results of 7 to this power and above, which have one more whole-number place than this, are written in scientific form. Places the game has not shown yet are never used.",
                     "num amount", new AcceptableValueList<int>(1, 2, 3, 4, 5, 6),
-                    Enumerable.Range(1, 6).ToDictionary(i => i.ToString(), i => i.ToString()), QuizGate(Panel.Quiz11)));
+                    Enumerable.Range(1, 6).ToDictionary(i => i.ToString(), i => i.ToString()), Gates.Scientific));
             Division = Config.Bind("Calculator", "Division", DivisionMode.Fraction,
                 Described("Once fractions are unlocked, show division results as fractions or as a whole number and a remainder.",
                     "divide", null,
-                    new Dictionary<string, string> { ["Fraction"] = Keys.Point, ["Remainder"] = Keys.Remainder }, QuizGate(Panel.Quiz4)));
+                    new Dictionary<string, string> { ["Fraction"] = Keys.Point, ["Remainder"] = Keys.Remainder }, Gates.Fractions));
 
             // Redraw the current page, so a change from Mod Settings shows at once.
             Config.SettingChanged += (_, _) => Global.manager?.UpdateText();
@@ -88,18 +88,6 @@ namespace Calculator
                 }
             }
             return new ConfigDescription(description, values, tags);
-        }
-
-        // The gate token that passes once this quiz is won. Global.GetWin reads a gate whose quiz
-        // number is a whole number, such as 4, as a count: it passes after
-        // that many of the chapter's quizzes, whichever they are. A quiz number below 7 is written
-        // instead as its digit at place 0, which GetWin cannot count with and turns back into the
-        // quiz's own name. GetWin already checks numbers from 7 up, such as "1e1-4", exactly.
-        private static string QuizGate(string quiz)
-        {
-            const string marker = "riddle-";
-            var number = quiz.Substring(quiz.IndexOf(marker) + marker.Length);
-            return "[" + quiz + (int.TryParse(number, out _) ? "e0" : "") + "]";
         }
     }
 }

@@ -33,9 +33,9 @@ Keys not yet unlocked do nothing, and neither does an operation that cannot go w
 
 Numbers are written the way the game writes them. A result within rounding error of a fraction with a denominator up to 7^4 is shown as that fraction. A result that cannot be written exactly is shown as approximately equal, rounded to three base-7 places as the game rounds: the last digit goes up by one only when the next digit is 4 or more. A result that does not exist, such as from division by zero, is shown as such.
 
-Until the quiz after the game's lesson on the approximately-equal sign, a result that could only be shown approximately does not exist, and the result key will not carry a result that would be approximate. After that quiz, carrying an approximate result, or a quotient whose remainder is shown, makes the expression approximate: the approximately-equal sign stays in the last cell of the expression row, and every result is approximate until the expression is cleared or a new number is started.
+Until approximate results unlock, a result that could only be shown approximately does not exist, and the result key will not carry a result that would be approximate. After that, carrying an approximate result, or a quotient whose remainder is shown, makes the expression approximate: the approximately-equal sign stays in the last cell of the expression row, and every result is approximate until the expression is cleared or a new number is started.
 
-Places the game has not yet shown you are never used: typed numbers go no higher than the largest place your dictionary has a digit in. Until the quiz after the game's lesson on its scientific form, a result that needs a larger place does not exist, and so does a nonzero result too small for three places. After that quiz, values beyond the shown places are written in the scientific form, and so are values of 7^n and above, where n is the significant-figures setting, from 1 to 6; click its counter to change it.
+Places the game has not yet shown you are never used: typed numbers go no higher than the largest place your dictionary has a digit in. Until the scientific form unlocks, a result that needs a larger place does not exist, and so does a nonzero result too small for three places. After that, values beyond the shown places are written in the scientific form, and so are values of 7^n and above, where n is the significant-figures setting, from 1 to 6; click its counter to change it.
 
 Division shows a fraction, or the whole number rounded down and a remainder, as chosen in the settings row once fractions are unlocked. The remainder has the divisor's sign, as the game's lesson on remainders teaches, and is shown when the expression is a single division and the remainder is not zero. Numbers joined by E, and squares, cubes, and roots, count as one value of a single division. A division in a longer expression that drops a remainder makes the result approximate.
 
@@ -43,21 +43,21 @@ A log is written as in the game, value then base: 4 log 2 equals 2.
 
 ## Unlocking
 
-Each feature unlocks with the quiz that first tests it.
+Each feature unlocks once you have won as many of a chapter's quizzes as the number of the quiz that first tests it, whichever quizzes they are, the way the game's own menus count quizzes won. Winning the quizzes in order unlocks each feature with that quiz.
 
-| Quiz | Unlocks |
+| Quizzes won | Unlocks |
 |---|---|
-| Arithmetic 2 | The calculator, with the digits, a sign key, addition, and subtraction |
-| Arithmetic 3 | Multiplication, and division with a remainder |
-| Arithmetic 4 | Digits after the point, repeating digits, results with fractions, and the choice of fraction or remainder for division |
-| Arithmetic 9 | Squares and cubes |
-| Arithmetic 10 | Exponents and logs |
-| Arithmetic 11 | Square roots, approximate results, the scientific form and its E key, and the significant-figures setting |
-| Geometry 1 | Pi |
-| Geometry 7 | Cube roots |
-| Advanced arithmetic 2 | E |
-| Advanced arithmetic 1 | Sine and cosine, in radians |
-| Advanced arithmetic 4 | A key that puts a random value from 0 to 1, to three base-7 places, in the expression |
+| Arithmetic, 2 | The calculator, with the digits, a sign key, addition, and subtraction |
+| Arithmetic, 3 | Multiplication, and division with a remainder |
+| Arithmetic, 4 | Digits after the point, repeating digits, results with fractions, and the choice of fraction or remainder for division |
+| Arithmetic, 9 | Squares and cubes |
+| Arithmetic, 10 | Exponents and logs |
+| Arithmetic, 11 | Square roots, approximate results, the scientific form and its E key, and the significant-figures setting |
+| Geometry, 1 | Pi |
+| Geometry, 7 | Cube roots |
+| Advanced arithmetic, 1 | Sine and cosine, in radians |
+| Advanced arithmetic, 2 | E |
+| Advanced arithmetic, 4 | A key that puts a random value from 0 to 1, to three base-7 places, in the expression |
 
 ## Configuration
 
@@ -69,7 +69,7 @@ Each feature unlocks with the quiz that first tests it.
 | `Calculator.SignificantFigures` | `4` | Use the scientific form for values of 7 to this power and above, from 1 to 6. |
 | `Calculator.Division` | `Fraction` | Show division results as a `Fraction`, or as a whole number and a `Remainder`, once fractions are unlocked. |
 
-The calculator's settings row changes the last two. Each setting is tagged with its name in glyphs, and the mod names itself in glyphs, so Mod Settings can show them in the game. Mod Settings lists each setting once the quiz that unlocks its feature, as listed under [Unlocking](#unlocking), is won.
+The calculator's settings row changes the last two. Each setting is tagged with its name in glyphs, and the mod names itself in glyphs, so Mod Settings can show them in the game. Mod Settings lists each setting exactly when its feature unlocks, as listed under [Unlocking](#unlocking).
 
 ## Requirements
 

@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace Calculator
 {
-    // What the player has unlocked, by the quizzes they have solved.
+    // What the player has unlocked, by how many of each chapter's quizzes they have won.
     internal sealed class Features
     {
         internal bool Open, MultiplyDivide, Fractions, PowerLog;
