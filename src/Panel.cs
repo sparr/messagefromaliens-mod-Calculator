@@ -36,8 +36,9 @@ namespace Calculator
 
         private static readonly Calc calc = new Calc();
         private static bool open;
-        // The history entry under the calculator, and the page it was on.
+        // The history entry under the calculator, its text, and the page it was on.
         private static int savedEntry = -1;
+        private static string savedText;
         private static int savedPage;
 
         private static readonly Func<Draw, bool> IsEditNote =
@@ -99,12 +100,14 @@ namespace Calculator
         {
             open = true;
             savedEntry = d.currenttext;
+            savedText = savedEntry >= 0 && savedEntry < d.text_history.Count ? d.text_history[savedEntry] : null;
             savedPage = savedEntry >= 0 && savedEntry < d.currentleftpage.Count ? d.currentleftpage[savedEntry] : 0;
             d.UpdateText();
         }
 
         // Back to the history entry, on the page it was on; drawing the calculator's single page
-        // resets the entry's page.
+        // resets the entry's page. The note editor replaces its entry's text when it opens a
+        // note, and that note keeps the page the game gave it.
         private static void Close(Draw d)
         {
             if (!open)
@@ -112,11 +115,13 @@ namespace Calculator
                 return;
             }
             open = false;
-            if (d != null && savedEntry >= 0 && savedEntry < d.currentleftpage.Count)
+            if (d != null && savedEntry >= 0 && savedEntry < d.currentleftpage.Count
+                && savedEntry < d.text_history.Count && d.text_history[savedEntry] == savedText)
             {
                 d.currentleftpage[savedEntry] = savedPage;
             }
             savedEntry = -1;
+            savedText = null;
             d?.UpdateText();
         }
 
