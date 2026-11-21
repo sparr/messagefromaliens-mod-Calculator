@@ -544,9 +544,15 @@ namespace Calculator
             _ => (Op?)null,
         };
 
-        // Whether a text field, such as one of the game's translation fields, has the keyboard.
+        // Whether a text field, such as one of the game's translation fields or an IMGUI field
+        // in another plugin's window, has the keyboard. IMGUI keeps a field's keyboard focus
+        // after its window closes, so an IMGUI field counts only while it is still drawn.
         private static bool TextFieldFocused()
         {
+            if (GUIUtility.keyboardControl != 0 && Time.frameCount - imguiFieldFrame <= 1)
+            {
+                return true;
+            }
             var selected = EventSystem.current?.currentSelectedGameObject;
             if (selected == null)
             {
@@ -559,6 +565,31 @@ namespace Calculator
             }
             var legacy = selected.GetComponent<UnityEngine.UI.InputField>();
             return legacy != null && legacy.isFocused;
+        }
+
+        // The last frame an IMGUI text field with the keyboard was drawn. OnGUI runs after
+        // LateUpdate, so a field drawn last frame still counts.
+        private static int imguiFieldFrame = int.MinValue / 2;
+
+        // Every IMGUI text field, password field, and text area is drawn through this method.
+        [HarmonyPatch]
+        private static class ImguiTextFieldPatch
+        {
+            private static IEnumerable<System.Reflection.MethodBase> TargetMethods() =>
+                AccessTools.GetDeclaredMethods(typeof(GUI))
+                    .Where(m => m.Name == "DoTextField" && m.GetParameters().Any(p => p.Name == "id" && p.ParameterType == typeof(int)))
+                    .Cast<System.Reflection.MethodBase>();
+
+            // Without the method, IMGUI fields are not seen, and the rest of the plugin still loads.
+            private static bool Prepare() => TargetMethods().Any();
+
+            private static void Prefix(int id)
+            {
+                if (id != 0 && id == GUIUtility.keyboardControl)
+                {
+                    imguiFieldFrame = Time.frameCount;
+                }
+            }
         }
 
         // Clicks, from the plugin's LateUpdate: the game ignores clicks on glyphs it does not know.
