@@ -46,7 +46,27 @@ namespace Calculator
 
         private static Draw Manager => Global.manager;
 
-        internal static Features Unlocked() => new Features
+        // Unlocks and the seen place are checked many times a redraw, and some checks run every
+        // frame, so each is cached for a frame. The keys also hold what a change within the frame
+        // would change: the save, and its count of wins or of dictionary words, which only grow.
+        private static Features unlocked;
+        private static (int Frame, object Save, int Wins) unlockedKey;
+        private static int seenPlace;
+        private static (int Frame, object Dict, int Words) seenPlaceKey;
+
+        internal static Features Unlocked()
+        {
+            var save = Global.savedata;
+            var key = (Time.frameCount, (object)save, save?.win?.Count ?? -1);
+            if (unlocked == null || key != unlockedKey)
+            {
+                unlocked = Gated();
+                unlockedKey = key;
+            }
+            return unlocked;
+        }
+
+        private static Features Gated() => new Features
         {
             Open = Gates.Passed(Gates.Open),
             MultiplyDivide = Gates.Passed(Gates.MultiplyDivide),
@@ -67,8 +87,19 @@ namespace Calculator
         // glyph shown. Higher places would show glyphs the game has not.
         private static int SeenPlace()
         {
-            var seen = 0;
             var dict = Global.savedata?.dict;
+            var key = (Time.frameCount, (object)dict, dict?.Count ?? -1);
+            if (key != seenPlaceKey)
+            {
+                seenPlace = FindSeenPlace(dict);
+                seenPlaceKey = key;
+            }
+            return seenPlace;
+        }
+
+        private static int FindSeenPlace(Dictionary<string, string> dict)
+        {
+            var seen = 0;
             if (dict == null)
             {
                 return seen;
@@ -151,7 +182,11 @@ namespace Calculator
 
         private static string Spaced(IEnumerable<string> keys) => string.Join(" " + Gap + " ", keys);
 
-        private static string Body()
+        // The result the calculator shows, from its last redraw, for the result key's underline
+        // and cursor; null for none.
+        private static Num? shownCarry;
+
+        private static string Body(out Num? carry)
         {
             var f = Unlocked();
             // The newest part of a long expression, leaving the last cell for the sign that the
@@ -165,7 +200,7 @@ namespace Calculator
             }
             var rows = new string[ControlRow + 1];
             rows[ExpressionRow] = Row(expression);
-            rows[ResultRow] = Row(Result(f, out _, out _));
+            rows[ResultRow] = Row(Result(f, out carry, out _));
 
             var digits = string.Join(" ", Enumerable.Range(0, 7).Select(i => i.ToString()));
             var extra = new List<string>();
@@ -295,8 +330,9 @@ namespace Calculator
             return true;
         }
 
-        // Whether pressing a key would do anything, mirroring Press.
-        private static bool Pressable(string word, int line, Features f)
+        // Whether pressing a key would do anything, mirroring Press. carry is the expression's
+        // result, so it is evaluated once per redraw.
+        private static bool Pressable(string word, int line, Features f, Num? carry)
         {
             if (line == DigitRow && word.Length == 1 && word[0] >= '0' && word[0] <= '6')
             {
@@ -344,7 +380,6 @@ namespace Calculator
             }
             if (word == Keys.Equal)
             {
-                Result(f, out var carry, out _);
                 return carry.HasValue && !calc.OnlyCarried;
             }
             return false;
@@ -376,7 +411,7 @@ namespace Calculator
                 {
                     d.selected.Add(d.DrawRectRenderer(1f, 1f, position, 2));
                 }
-                if (!Pressable(glyph.alien_txt, glyph.line, f))
+                if (!Pressable(glyph.alien_txt, glyph.line, f, shownCarry))
                 {
                     continue;
                 }
@@ -649,7 +684,7 @@ namespace Calculator
                     switch (sec)
                     {
                         case "lefttext" when Showing(d):
-                            s = Body();
+                            s = Body(out shownCarry);
                             page = 0;
                             break;
                         case "lefttitle" when Showing(d):
