@@ -33,6 +33,10 @@ namespace Calculator
         private const string Early = "early";
         private const string Late = "late";
         private const string BlankPages = ". .";
+        // The left panel's sections, as Draw.Write names them.
+        private const string LeftText = "lefttext";
+        private const string LeftTitle = "lefttitle";
+        private const string LeftMenu = "leftmenu";
 
         private static readonly Calc calc = new Calc();
         private static bool open;
@@ -454,11 +458,11 @@ namespace Calculator
         }
 
         private static bool IsButton(AlienCharacter glyph) =>
-            glyph != null && glyph.sector == "leftmenu" && glyph.alien_txt == Keys.Button;
+            glyph != null && glyph.sector == LeftMenu && glyph.alien_txt == Keys.Button;
 
         // A calculator key that would do anything now, as underlined.
         private static bool IsKey(Draw d, AlienCharacter glyph) =>
-            glyph != null && Showing(d) && glyph.sector == "lefttext" && glyph.line >= FirstKeyRow && glyph.alien_txt != ""
+            glyph != null && Showing(d) && glyph.sector == LeftText && glyph.line >= FirstKeyRow && glyph.alien_txt != ""
             && Pressable(glyph.alien_txt, glyph.line, Unlocked(), shownCarry);
 
         private static AlienCharacter HitGlyph()
@@ -685,14 +689,14 @@ namespace Calculator
                     var d = __instance;
                     switch (sec)
                     {
-                        case "lefttext" when Showing(d):
+                        case LeftText when Showing(d):
                             s = Body(out shownCarry);
                             page = 0;
                             break;
-                        case "lefttitle" when Showing(d):
+                        case LeftTitle when Showing(d):
                             s = Keys.Title;
                             break;
-                        case "leftmenu" when Available(d):
+                        case LeftMenu when Available(d):
                             s = (open ? OpenMenu(d) : s) + " " + Keys.Button;
                             break;
                     }
@@ -821,7 +825,7 @@ namespace Calculator
                         return;
                     }
                     var glyph = HitGlyph();
-                    if (glyph == null || glyph.sector != "leftmenu")
+                    if (glyph == null || glyph.sector != LeftMenu)
                     {
                         return;
                     }

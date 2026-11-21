@@ -269,7 +269,6 @@ namespace Calculator
         internal const int MaxRepeat = 6;
         // Repeat glyphs by the number of zero digits between the written digits and the repeat.
         internal static readonly string[] Repeat = { "loop", "loop1", "loop2", "loop3" };
-        internal const string Negative = "negative";
         private const string Infinite = "infbig";
 
         private static readonly BigInteger Seven = 7;
@@ -306,7 +305,7 @@ namespace Calculator
                     return null;
                 }
                 // Beyond what a double holds, which the game's scientific form needs.
-                return f < 0 ? new List<string> { Negative, Infinite } : new List<string> { Infinite };
+                return f < 0 ? new List<string> { Keys.Negative, Infinite } : new List<string> { Infinite };
             }
             // Rounded to the smallest place, unless that keeps fewer than three significant digits
             // and the scientific form can keep them.
@@ -425,7 +424,7 @@ namespace Calculator
             var list = new List<string>();
             if (n.Sign < 0)
             {
-                list.Add(Negative);
+                list.Add(Keys.Negative);
                 n = -n;
             }
             var whole = BigInteger.DivRem(n, d, out var rest);

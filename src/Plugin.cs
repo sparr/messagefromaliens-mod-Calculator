@@ -8,7 +8,7 @@ using BepInEx.Logging;
 using HarmonyLib;
 
 // The mod's name in glyphs, as game word IDs, for Mod Settings and any other mod that lists mods.
-[assembly: AssemblyMetadata("MessageFromAliens.Name", "number calculate")]
+[assembly: AssemblyMetadata("MessageFromAliens.Name", Calculator.Keys.Title)]
 
 namespace Calculator
 {
@@ -39,11 +39,11 @@ namespace Calculator
 
             Figures = Config.Bind("Calculator", "SignificantFigures", 4,
                 Described("Results of 7 to this power and above, which have one more whole-number place than this, are written in scientific form. Places the game has not shown yet are never used.",
-                    "num amount", new AcceptableValueList<int>(1, 2, 3, 4, 5, 6),
+                    Keys.Figures, new AcceptableValueList<int>(1, 2, 3, 4, 5, 6),
                     Enumerable.Range(1, 6).ToDictionary(i => i.ToString(), i => i.ToString()), Gates.Scientific));
             Division = Config.Bind("Calculator", "Division", DivisionMode.Fraction,
                 Described("Once fractions are unlocked, show division results as fractions or as a whole number and a remainder.",
-                    "divide", null,
+                    Keys.Word(Op.Divide), null,
                     new Dictionary<string, string> { ["Fraction"] = Keys.Point, ["Remainder"] = Keys.Remainder }, Gates.Fractions));
 
             // Redraw the current page, so a change from Mod Settings shows at once.
