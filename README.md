@@ -47,17 +47,17 @@ Each feature unlocks once you have won as many of a chapter's quizzes as the num
 
 | Quizzes won | Unlocks |
 |---|---|
-| Arithmetic, 2 | The calculator, with the digits, a sign key, addition, and subtraction |
-| Arithmetic, 3 | Multiplication, and division with a remainder |
-| Arithmetic, 4 | Digits after the point, repeating digits, results with fractions, and the choice of fraction or remainder for division |
-| Arithmetic, 9 | Squares and cubes |
-| Arithmetic, 10 | Exponents and logs |
-| Arithmetic, 11 | Square roots, approximate results, the scientific form and its E key, and the significant-figures setting |
-| Geometry, 1 | Pi |
-| Geometry, 7 | Cube roots |
-| Advanced arithmetic, 1 | Sine and cosine, in radians |
-| Advanced arithmetic, 2 | E |
-| Advanced arithmetic, 4 | A key that puts a random value from 0 to 1, to three base-7 places, in the expression |
+| Chapter 1, 2 | The calculator, with the digits, a sign key, addition, and subtraction |
+| Chapter 1, 3 | Multiplication, and division with a remainder |
+| Chapter 1, 4 | Digits after the point, repeating digits, results with fractions, and the choice of fraction or remainder for division |
+| Chapter 1, 9 | Squares and cubes |
+| Chapter 1, 10 | Exponents and logs |
+| Chapter 1, 11 | Square roots, approximate results, the scientific form and its E key, and the significant-figures setting |
+| Chapter 2, 1 | Pi |
+| Chapter 2, 7 | Cube roots |
+| Optional chapter 2, 1 | Sine and cosine, in radians |
+| Optional chapter 2, 2 | E |
+| Optional chapter 2, 4 | A key that puts a random value from 0 to 1, to three base-7 places, in the expression |
 
 With [Mod Settings](https://github.com/sparr/messagefromaliens-mod-ModSettings) installed, each unlock is also announced in glyphs, in the game's own wording: a line at the end of the chapter's explanation, shown from the start, says how many of the chapter's quizzes to win to unlock it, and the page the game shows when that many are won says that you now unlock it.
 
