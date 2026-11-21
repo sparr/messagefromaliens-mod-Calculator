@@ -85,7 +85,7 @@ The calculator's settings row changes the last two. Each setting is tagged with 
 dotnet build -c Release
 ```
 
-The build copies `Calculator.dll` to `<game>/BepInEx/plugins/Calculator/`. Disable the copy with `-p:DeployToGame=false`.
+With `-p:DeployToGame=true`, the build also copies `Calculator.dll` to `<game>/BepInEx/plugins/Calculator/`.
 
 The build looks for the game in `<SteamLibraryDir>/steamapps/common/Message From Aliens`. `SteamLibraryDir` comes from the first of these that is set:
 
