@@ -456,8 +456,10 @@ namespace Calculator
         private static bool IsButton(AlienCharacter glyph) =>
             glyph != null && glyph.sector == "leftmenu" && glyph.alien_txt == Keys.Button;
 
+        // A calculator key that would do anything now, as underlined.
         private static bool IsKey(Draw d, AlienCharacter glyph) =>
-            glyph != null && Showing(d) && glyph.sector == "lefttext" && glyph.line >= FirstKeyRow && glyph.alien_txt != "";
+            glyph != null && Showing(d) && glyph.sector == "lefttext" && glyph.line >= FirstKeyRow && glyph.alien_txt != ""
+            && Pressable(glyph.alien_txt, glyph.line, Unlocked(), shownCarry);
 
         private static AlienCharacter HitGlyph()
         {

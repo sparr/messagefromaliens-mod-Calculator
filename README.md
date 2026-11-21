@@ -29,7 +29,7 @@ Evaluation order follows the game's lesson on it: functions that follow their op
 
 While the calculator is open and no text field has the keyboard (including an IMGUI text field in another plugin's window), typing presses its keys: the digits 0 to 6, `+`, `-`, `*`, `/`, `^` for exponents, the decimal separator from your regional settings (`.` or `,`) for the point key, `E` for the scientific-form key, `e` and `p` for the constants, `=` or Enter for the result, and Backspace to undo the last key pressed. `-` is the sign key at the start of a number and right after an operation, and subtraction elsewhere.
 
-Keys not yet unlocked do nothing, and neither does an operation that cannot go where it is pressed. Keys that would do something are underlined, like the game's menu choices.
+Keys not yet unlocked do nothing, and neither does an operation that cannot go where it is pressed. Keys that would do something are underlined, like the game's menu choices, and only those show the clickable cursor.
 
 Numbers are written the way the game writes them. A result within rounding error of a fraction with a denominator up to 7^4 is shown as that fraction. A result that cannot be written exactly is shown as approximately equal, rounded to three base-7 places as the game rounds: the last digit goes up by one only when the next digit is 4 or more. A result that does not exist, such as from division by zero, is shown as such.
 
@@ -106,6 +106,6 @@ For a game folder outside a Steam library, set `GameDir` to the game folder the 
 | `Draw.UpdateText1` | Prefix, before other mods' prefixes: after a click on a history button with the calculator open, sets the entry that button leads to. Prefix and finalizer: mark the redraw, whose pushes of the current entry leave the calculator open. Postfix: boxes the current division setting and underlines the keys that would do something. |
 | `Draw.Update` | Prefix and finalizer: mark a frame with a mouse click, for the `PushLeftText` prefix. Prefix: with the calculator open, closes it on a click of the panel's history buttons and notes the entry under the calculator or the one after it, for the `UpdateText1` prefix to show instead of the game's step from it. Finalizer: drops a noted entry the redraw did not use. |
 | `GUI.DoTextField` | Prefix: notes the frame an IMGUI text field with the keyboard is drawn, so typing into another plugin's IMGUI field does not press the calculator's keys, and a field whose window has closed no longer counts. |
-| `HardwareCursor.Apply` | Prefix: gives the cursor the clickable color over the calculator's keys. |
+| `HardwareCursor.Apply` | Prefix: gives the cursor the clickable color over the calculator's keys that would do something. |
 
 The plugin's `LateUpdate` handles clicks on the button and keys, since the game ignores clicks on glyphs it does not know, and typing while the calculator is open.
