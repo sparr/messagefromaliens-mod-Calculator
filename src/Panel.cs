@@ -377,7 +377,18 @@ namespace Calculator
         [HarmonyPatch(typeof(Draw), nameof(Draw.UpdateText1))]
         private static class UpdateText1Patch
         {
-            private static void Prefix() => drawing = true;
+            // Before other mods' prefixes, so the redraw and everything in it see the history
+            // entry a history button led to.
+            [HarmonyPriority(Priority.First)]
+            private static void Prefix(Draw __instance)
+            {
+                drawing = true;
+                if (historyTarget >= 0)
+                {
+                    __instance.currenttext = historyTarget;
+                    historyTarget = -1;
+                }
+            }
 
             private static void Finalizer() => drawing = false;
 
@@ -707,15 +718,19 @@ namespace Calculator
             }
         }
 
+        // The history entry a history button clicked with the calculator open leads to, for the
+        // UpdateText1 prefix; -1 for none.
+        private static int historyTarget = -1;
+
         [HarmonyPatch(typeof(Draw), "Update")]
         private static class UpdatePatch
         {
             // The history buttons, clicked while the calculator is open, go to the entry under the
             // calculator or the one after it. The game handles the click during Update as a step
-            // from that entry, so note the entry to show here and set it afterward.
-            private static void Prefix(Draw __instance, out int __state)
+            // from that entry and redraws at the end of Update, so note the entry to show here and
+            // set it as the redraw starts.
+            private static void Prefix(Draw __instance)
             {
-                __state = -1;
                 clicking = Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1);
                 try
                 {
@@ -734,7 +749,7 @@ namespace Calculator
                         : -1;
                     if (target >= 0 && target < d.text_history.Count)
                     {
-                        __state = target;
+                        historyTarget = target;
                         Close(d);
                     }
                 }
@@ -744,23 +759,12 @@ namespace Calculator
                 }
             }
 
-            private static void Postfix(Draw __instance, int __state)
+            // A target the redraw did not use does not carry over to a later one.
+            private static void Finalizer()
             {
-                try
-                {
-                    if (__state >= 0)
-                    {
-                        __instance.currenttext = __state;
-                        __instance.UpdateText();
-                    }
-                }
-                catch (Exception e)
-                {
-                    LogOnce($"Update postfix failed: {e}");
-                }
+                clicking = false;
+                historyTarget = -1;
             }
-
-            private static void Finalizer() => clicking = false;
         }
     }
 }
