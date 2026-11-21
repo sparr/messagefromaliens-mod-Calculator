@@ -88,6 +88,14 @@ namespace Calculator
         private static int ValuePlace(Features f) =>
             f.Scientific ? Math.Min(Plugin.Figures.Value, SeenPlace() + 1) - 1 : SeenPlace();
 
+        // The significant-figures counter's next value. It cycles only through the values that
+        // make a difference, up to one above the largest seen place.
+        private static int NextFigures()
+        {
+            var top = Math.Min(MaxFigures, SeenPlace() + 1);
+            return Plugin.Figures.Value >= top ? 1 : Plugin.Figures.Value + 1;
+        }
+
         private static DivisionMode Mode(Features f) => f.Fractions ? Plugin.Division.Value : DivisionMode.Remainder;
 
         // Whether the button belongs in the menu: unlocked, and the panel is not editing a note.
@@ -245,7 +253,7 @@ namespace Calculator
                 else if (word != Keys.Word(Op.Divide))
                 {
                     // The counter and its label cycle the significant figures.
-                    Plugin.Figures.Value = Plugin.Figures.Value % MaxFigures + 1;
+                    Plugin.Figures.Value = NextFigures();
                 }
             }
             else if (word == Keys.Negative)
@@ -304,7 +312,7 @@ namespace Calculator
                 {
                     return f.Fractions && mode != Plugin.Division.Value;
                 }
-                return word != Keys.Word(Op.Divide) && f.Scientific;
+                return word != Keys.Word(Op.Divide) && f.Scientific && NextFigures() != Plugin.Figures.Value;
             }
             if (word == Keys.Negative)
             {
