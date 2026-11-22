@@ -77,6 +77,7 @@ The calculator's settings row changes the last two. Each setting is tagged with 
 
 - BepInEx 5.4.23.6 or later, `BepInEx_win_x64` build, unzipped into the game folder. Tested with Unity 6000.6.8f1.
 - On Linux under Proton, set the Steam launch options to `WINEDLLOVERRIDES="winhttp=n,b" %command%`.
+- Optional: [Mod Settings](https://github.com/sparr/messagefromaliens-mod-ModSettings) 0.2.0 or later, to change settings in the game, list each as its feature unlocks, and show unlock messages.
 - .NET SDK 8 or later to build.
 
 ## Building
