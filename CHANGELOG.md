@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## [0.4.0](https://github.com/sparr/messagefromaliens-mod-Calculator/releases/tag/v0.4.0) - 2026-11-22
+## [0.4.0](https://github.com/sparr/messagefromaliens-mod-Calculator/releases/tag/v0.4.0) - 2026-11-23
 
 - Values stay exact, fractions are shown as the game shows them, and results that lose a remainder are marked approximate.
 - Back undoes the last key press.
